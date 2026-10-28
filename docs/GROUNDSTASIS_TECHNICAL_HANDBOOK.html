@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ground Stasis — Technical Handbook &amp; Developer Handoff</title>
+<meta name="description" content="Ground Stasis technical handbook and developer handoff — architecture, data model, API, webhooks, billing, deployment, runbooks.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0A192F; --navy700:#122A4A; --orange:#FF6B00; --orange700:#E25F00;
+  --slate:#64748B; --slate400:#94A3B8; --slate200:#E2E8F0; --slate50:#F8FAFC;
+  --white:#FFFFFF;
+  --teal:#00BFA5; --amber:#F59E0B; --review:#FB8C00; --red:#EF4444;
+  --ink:#0A192F; --bg:#FFFFFF; --panel:#F8FAFC; --border:#E2E8F0; --muted:#64748B;
+  --code-bg:#0A192F; --code-fg:#E2E8F0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ink:#E6EDF6; --bg:#0A192F; --panel:#122A4A; --border:#1E3A5F; --muted:#94A3B8;
+    --code-bg:#061223; --code-fg:#CBD5E1;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#E6EDF6; --bg:#0A192F; --panel:#122A4A; --border:#1E3A5F; --muted:#94A3B8;
+  --code-bg:#061223; --code-fg:#CBD5E1;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:Inter,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+.layout{display:grid; grid-template-columns:280px minmax(0,1fr); gap:0; max-width:1240px; margin:0 auto;}
+/* Sidebar */
+.sidebar{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  background:var(--navy); color:#CBD5E1; padding:28px 20px 40px; border-right:1px solid var(--border);
+}
+.brand{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+.brand .node{width:11px; height:11px; border-radius:50%; background:var(--orange); flex:0 0 auto; box-shadow:0 0 0 4px rgba(255,107,0,.15);}
+.brand .word{font-weight:700; letter-spacing:-.02em; font-size:18px; color:#fff;}
+.sidebar .sub{font-size:12px; color:var(--slate400); margin:0 0 22px 21px; letter-spacing:.02em;}
+.sidebar .toctitle{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:var(--slate400); margin:0 0 10px 2px;}
+.sidebar .toc ul{list-style:none; margin:0; padding:0;}
+.sidebar .toc > ul > li{margin:1px 0;}
+.sidebar .toc a{
+  display:block; color:#B9C6D8; text-decoration:none; font-size:13.5px; line-height:1.35;
+  padding:6px 10px; border-radius:7px; border-left:2px solid transparent;
+}
+.sidebar .toc a:hover{background:var(--navy700); color:#fff;}
+.sidebar .toc a.active{background:var(--navy700); color:#fff; border-left-color:var(--orange);}
+/* Main */
+.main{padding:0 clamp(16px,4vw,56px) 96px;}
+.masthead{padding:48px 0 22px; border-bottom:1px solid var(--border); margin-bottom:36px;}
+.masthead h1{font-size:clamp(28px,4vw,42px); font-weight:800; letter-spacing:-.02em; line-height:1.1; margin:0 0 14px;}
+.masthead .meta{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; font-size:13px; color:var(--muted);}
+.masthead .eyebrow{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:var(--orange); margin:0 0 14px;}
+.content{max-width:820px;}
+.content h2{font-size:27px; font-weight:700; letter-spacing:-.02em; margin:52px 0 8px; padding-top:14px; scroll-margin-top:16px;}
+.content h2::after{content:""; display:block; width:46px; height:3px; background:var(--orange); border-radius:2px; margin-top:12px;}
+.content h3{font-size:18px; font-weight:700; margin:30px 0 6px;}
+.content p{margin:12px 0;}
+.content a{color:var(--orange700); text-decoration:none; border-bottom:1px solid rgba(226,95,0,.3);}
+.content a:hover{border-bottom-color:var(--orange700);}
+.content ul,.content ol{padding-left:22px; margin:12px 0;}
+.content li{margin:5px 0;}
+.content strong{font-weight:700;}
+hr{border:none; border-top:1px solid var(--border); margin:40px 0;}
+/* Tables */
+.content table{border-collapse:collapse; width:100%; margin:18px 0; font-size:14px; display:block; overflow-x:auto;}
+.content th,.content td{border:1px solid var(--border); padding:9px 12px; text-align:left; vertical-align:top;}
+.content th{background:var(--panel); font-weight:700; white-space:nowrap;}
+.content tbody tr:nth-child(even){background:color-mix(in srgb, var(--panel) 55%, transparent);}
+.content td code,.content th code{white-space:nowrap;}
+/* Code */
+.content pre{background:var(--code-bg); color:var(--code-fg); padding:18px 20px; border-radius:10px; overflow-x:auto; font-size:13px; line-height:1.5; margin:18px 0; border:1px solid var(--border);}
+.content pre code{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; background:none; padding:0; color:inherit;}
+.content :not(pre) > code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.88em; background:var(--panel); border:1px solid var(--border); padding:1px 5px; border-radius:5px;}
+/* Blockquotes / callouts */
+blockquote{margin:18px 0; padding:14px 18px; border-left:4px solid var(--slate400); background:var(--panel); border-radius:0 8px 8px 0; font-size:14.5px;}
+blockquote p{margin:6px 0;}
+blockquote.bq-risk,blockquote.bq-important{border-left-color:var(--red);}
+blockquote.bq-important{border-left-color:var(--orange);}
+blockquote.bq-superseded{border-left-color:var(--review);}
+blockquote.bq-watch{border-left-color:var(--amber);}
+/* Chips */
+.chip{display:inline-block; font-size:11px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; padding:1px 8px; border-radius:999px; border:1px solid transparent; white-space:nowrap; vertical-align:baseline;}
+.chip-verified{color:#047857; background:rgba(0,191,165,.14); border-color:rgba(0,191,165,.35);}
+.chip-runtime{color:#B45309; background:rgba(245,158,11,.15); border-color:rgba(245,158,11,.4);}
+.chip-planned{color:#475569; background:rgba(100,116,139,.14); border-color:rgba(100,116,139,.35);}
+.chip-superseded{color:#C2410C; background:rgba(251,140,0,.15); border-color:rgba(251,140,0,.4);}
+.chip-risk{color:#B91C1C; background:rgba(239,68,68,.14); border-color:rgba(239,68,68,.4);}
+.chip-important{color:#C2410C; background:rgba(255,107,0,.14); border-color:rgba(255,107,0,.4);}
+.chip-watch{color:#B45309; background:rgba(245,158,11,.15); border-color:rgba(245,158,11,.4);}
+.chip-note{color:#475569; background:rgba(100,116,139,.12); border-color:rgba(100,116,139,.3);}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .chip-verified{color:#34D8C0;}
+  :root:not([data-theme="light"]) .chip-runtime,:root:not([data-theme="light"]) .chip-watch{color:#FBBF24;}
+  :root:not([data-theme="light"]) .chip-planned,:root:not([data-theme="light"]) .chip-note{color:#B9C6D8;}
+  :root:not([data-theme="light"]) .chip-superseded,:root:not([data-theme="light"]) .chip-important{color:#FDBA74;}
+  :root:not([data-theme="light"]) .chip-risk{color:#FCA5A5;}
+}
+/* Mobile */
+@media (max-width:860px){
+  .layout{grid-template-columns:1fr;}
+  .sidebar{position:static; height:auto; border-right:none; border-bottom:1px solid var(--border);}
+  .sidebar .toc{max-height:220px; overflow-y:auto;}
+  .main{padding:0 16px 72px;}
+}
+@media print{
+  .sidebar{display:none;}
+  .layout{display:block; max-width:none;}
+  .content pre,.content table{page-break-inside:avoid;}
+  body{font-size:11pt;}
+  .content a{color:inherit; border:none;}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><span class="node"></span><span class="word">Ground Stasis</span></div>
+    <p class="sub">Technical Handbook</p>
+    <p class="toctitle">Contents</p>
+    <div class="toc">
+<ul>
+<li><a href="#a-system-overview">A. System overview</a></li>
+<li><a href="#b-repository-map-feature-to-file-index">B. Repository map &amp; feature-to-file index</a></li>
+<li><a href="#c-satellite-data-analysis-pipeline">C. Satellite data &amp; analysis pipeline</a></li>
+<li><a href="#d-application-architecture-request-lifecycle">D. Application architecture &amp; request lifecycle</a></li>
+<li><a href="#e-database-data-model">E. Database &amp; data model</a></li>
+<li><a href="#f-authentication-authorization-account-ownership">F. Authentication, authorization &amp; account ownership</a></li>
+<li><a href="#g-api-architecture-integrations">G. API architecture &amp; integrations</a></li>
+<li><a href="#h-webhooks-asynchronous-processing">H. Webhooks &amp; asynchronous processing</a></li>
+<li><a href="#i-stripe-products-billing-entitlements">I. Stripe, products, billing &amp; entitlements</a></li>
+<li><a href="#j-email-notifications-scheduled-jobs">J. Email, notifications &amp; scheduled jobs</a></li>
+<li><a href="#k-seo-public-tools-distribution">K. SEO, public tools &amp; distribution</a></li>
+<li><a href="#l-google-analytics-4-event-dictionary">L. Google Analytics 4 event dictionary</a></li>
+<li><a href="#m-deployment-configuration-environments">M. Deployment, configuration &amp; environments</a></li>
+<li><a href="#n-security-privacy-data-integrity">N. Security, privacy &amp; data integrity</a></li>
+<li><a href="#o-troubleshooting-runbooks">O. Troubleshooting runbooks</a></li>
+<li><a href="#p-junior-developer-onboarding">P. Junior developer onboarding</a></li>
+<li><a href="#q-faq">Q. FAQ</a></li>
+<li><a href="#r-known-gaps-handoff-priorities">R. Known gaps &amp; handoff priorities</a></li>
+</ul>
+</div>
+
+  </aside>
+  <main class="main">
+    <header class="masthead">
+      <p class="eyebrow">Developer Handoff</p>
+      <h1>Ground Stasis — Technical Handbook &amp; Developer Handoff</h1>
+      <div class="meta">Version: 1.0 · Last updated: 2026-10-28 · Status: Living document</div>
+    </header>
+    <div class="content">
+      
+
+<p><strong>Audit scope.</strong> This handbook was written by inspecting the repository directly: the Prisma schema,
+App Router pages and API routes, the analysis engine, the satellite providers, billing, auth,
+webhooks, scheduled functions, analytics, and the existing root-level docs (<code>ARCHITECTURE.md</code>,
+<code>ALGORITHM.md</code>, <code>SATELLITE_DATA.md</code>, <code>ENVIRONMENT.md</code>, <code>README.md</code>). Where this handbook and an older
+root doc disagree, <strong>this handbook reflects the current code</strong> and the discrepancy is called out.</p>
+<p><strong>How to read the status labels.</strong>
+- <strong><span class="chip chip-verified">Verified</span></strong> — confirmed by reading the implementation.
+- <strong><span class="chip chip-runtime">Runtime-verify</span></strong> — code exists and is correct by inspection, but its live/production behavior
+  should be confirmed against the real service (Stripe, CDSE, GA4) before you rely on it.
+- <strong><span class="chip chip-planned">Planned</span></strong> — described in a plan/comment but not implemented.
+- <strong><span class="chip chip-superseded">Superseded</span></strong> — an older doc describes this differently; the old description is out of date.</p>
+<blockquote class="bq bq-superseded">
+<p><strong>Important reconciliation.</strong> <code>ARCHITECTURE.md</code> and <code>ENVIRONMENT.md</code> predate a large body of work and
+say persistence is "spec only; not wired in the MVP." <strong><span class="chip chip-superseded">Superseded</span></strong> — persistence, an
+authenticated account area, a public REST API, API keys, a usage ledger, and outbound webhooks are
+all implemented now (see §E, §F, §G, §H). Treat those two docs as accurate for the <em>analysis engine,
+satellite pipeline, and cost philosophy</em>, and this handbook as authoritative for everything else.</p>
+</blockquote>
+<hr />
+<hr/>
+<h2 id="a-system-overview">A. System overview</h2>
+<p><strong>The customer problem.</strong> A construction lender funds a building project in draws. Between draw
+inspections (often weeks apart) the lender has no independent way to know whether the site is actually
+progressing. A stalled project is a leading risk indicator, but it usually surfaces late — at the next
+inspection or when a draw request looks wrong. Ground Stasis watches a financed site <strong>by satellite</strong>
+and flags when it has gone unusually quiet, so a stall becomes an email this week rather than a
+surprise at the next draw.</p>
+<p><strong>What it is (and is not).</strong> It is an <strong>independent remote monitoring signal</strong>. It is <strong>not</strong> a
+replacement for physical inspection, fund control, appraisal, or underwriting judgment, and it never
+concludes that construction has "stopped" — only that observable surface change is unusually low. A
+cloudy or missing image is reported as a <strong>DATA GAP</strong>, never as inactivity. This integrity rule is
+enforced in code (see §C) and must be preserved in any change.</p>
+<p><strong>Two products on one engine.</strong>
+- <strong>One-time check ($9):</strong> a single live satellite read on one site → a status/score/confidence +
+  an evidence timeline, emailed as a secure link. Proves the problem once. Model: <code>SiteCheck</code>.
+- <strong>Recurring monitoring ($19/$49/$99/mo):</strong> continuous monitoring of 1/3/10 sites with email alerts
+  on stasis and resumed activity. Model: <code>Site</code> + <code>Subscription</code>.
+- <strong>Construction Draw Intelligence (CDI, +$15/site/mo):</strong> compares a customer-reported construction
+  milestone against the satellite evidence and emails a finding when they diverge. <span class="chip chip-verified">Verified</span> —
+  <code>src/lib/cdi/</code>, <code>SiteMilestone</code> model, per-site <code>drawIntelligence</code> flag.</p>
+<p><strong>Positioning.</strong> Ground Stasis is framed as <em>construction-activity-intelligence infrastructure</em> —
+satellite imagery is one (swappable) sensor. The value stack is OBSERVATION → INTERPRETATION → STATUS
+→ ALERT → WORKFLOW → API → DATA, and each layer is independently monetizable. See the project doc
+<code>positioning.md</code>.</p>
+<p><strong>Technology stack.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Choice</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Framework</td>
+<td>Next.js 14.2.35 (App Router)</td>
+<td>Pages, server components, API route handlers</td>
+</tr>
+<tr>
+<td>Language</td>
+<td>TypeScript (strict)</td>
+<td>One language front-to-back</td>
+</tr>
+<tr>
+<td>UI</td>
+<td>React 18.3.1, server components by default</td>
+<td>Dashboard + public pages</td>
+</tr>
+<tr>
+<td>Analysis engine</td>
+<td>Pure TS, zero deps (<code>src/lib/analysis</code>)</td>
+<td>Deterministic stasis heuristic</td>
+</tr>
+<tr>
+<td>Satellite</td>
+<td>CDSE Sentinel Hub <strong>Statistical API</strong></td>
+<td>Server-side polygon statistics (no raster downloads)</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>PostgreSQL (Neon) via <strong>Prisma 5.22</strong></td>
+<td>Sites, observations, alerts, subscriptions, API keys, webhooks</td>
+</tr>
+<tr>
+<td>Billing</td>
+<td>Stripe (Checkout + Customer Portal + webhooks)</td>
+<td>One-time + subscription</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>Pluggable: console (default) / Resend</td>
+<td>Alerts, magic links, results</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>HMAC-signed magic-link tokens (<code>node:crypto</code>)</td>
+<td>Passwordless, scoped</td>
+</tr>
+<tr>
+<td>Analytics</td>
+<td>GA4 (client events + server-side purchase)</td>
+<td>Funnel + verified conversions</td>
+</tr>
+<tr>
+<td>Hosting</td>
+<td>Netlify (<code>@netlify/plugin-nextjs</code> v5) + scheduled functions</td>
+<td>App + cron</td>
+</tr>
+</tbody>
+</table>
+<p><strong>High-level architecture.</strong></p>
+<pre><code>                 ┌─────────────────────────── Netlify (Next.js app) ───────────────────────────┐
+  Browser ─────▶ │  Public SEO pages + tools      Account area (/account)     API v1 (/api/v1) │
+                 │  Checkout / $9 check flow       (magic-link, scoped)        (API-key auth)   │
+                 │  Next server handler (SSR + all /api route handlers)                         │
+                 │  Scheduled functions: scheduled-analysis (6h), scheduled-webhook-delivery(1m)│
+                 └───┬───────────────┬───────────────┬───────────────┬───────────────┬──────────┘
+                     │               │               │               │               │
+                     ▼               ▼               ▼               ▼               ▼
+              Postgres (Neon)   CDSE Statistical   Stripe        Email (Resend/   GA4 (Measurement
+              via Prisma        API (Sentinel-2)   (billing)     console)         Protocol + gtag)
+</code></pre>
+<hr />
+<h2 id="b-repository-map-feature-to-file-index">B. Repository map &amp; feature-to-file index</h2>
+<pre><code>src/
+  app/                     App Router: pages + API route handlers
+    page.tsx               Homepage (SoftwareApplication schema + pricing)
+    layout.tsx             Root layout: Organization schema, GA injection, Nav/Footer
+    account/page.tsx       Authenticated account area (portfolio + API keys + webhooks)
+    construction-*/        SEO pages: hub, pillars, calculators, checklists, forms
+    construction-loan-monitoring/[location]/  12 programmatic market pages (SEO)
+    utility-construction-inspection-form/     free tool (Tier 2)
+    integrations/zapier/   Zapier integration landing page
+    docs/                  Public API documentation page
+    media-kit/             Press/brand assets page
+    api/                   Route handlers (see §G, §H, §I, §J)
+  components/              UI (chrome Nav/Footer, pricing, tools/*, account/*, cdi/*)
+  lib/
+    analysis/              PURE deterministic engine (imports nothing outside itself)
+    satellite/             Provider interface + Demo + SentinelHub (CDSE)
+    geo/                   Geometry: area, validation, suitability, geocode
+    auth/magic-link.ts     HMAC-signed token create/verify
+    account/session.ts     verifyAccountToken (account-scoped gate for /account + account APIs)
+    billing/               Stripe adapter, pricing tiers, webhook verify
+    email/                 Provider interface + console + Resend + templates
+    api/                   Public API v1: keys, auth, meter, errors, handler, serialize,
+                           openapi, webhooks/* (sign, ssrf, secret-crypto, events, store,
+                           emit, delivery-policy)
+    jobs/                  analyze-site, run (scheduled orchestration), demo, deliver-webhooks
+    db/                    Prisma client, repository (data access), mappers, idempotency
+    seo/locations.ts       Market list for the [location] pages
+    config/site.ts         SITE constants (url, gaId, etc.)
+    env.ts                 Typed env readers + capabilities()
+  data/demo-site.ts        Synthetic DEMO_SITE timeline
+prisma/schema.prisma       Data model + migrations
+netlify/functions/         scheduled-analysis.ts, scheduled-webhook-delivery.ts
+zapier-app/                Separate Zapier Platform CLI app (deploys to Zapier, not Netlify)
+</code></pre>
+<p><strong>Feature → where to start:</strong></p>
+<table>
+<thead>
+<tr>
+<th>To change…</th>
+<th>Start in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The stasis score / thresholds</td>
+<td><code>src/lib/analysis/config.ts</code> (then bump <code>THRESHOLDS_VERSION</code>)</td>
+</tr>
+<tr>
+<td>Status bands / override rules</td>
+<td><code>src/lib/analysis/status.ts</code>, <code>stasis.ts</code></td>
+</tr>
+<tr>
+<td>How satellite data is fetched</td>
+<td><code>src/lib/satellite/sentinelhub-provider.ts</code></td>
+</tr>
+<tr>
+<td>A monitoring run</td>
+<td><code>src/lib/jobs/analyze-site.ts</code> + <code>src/lib/jobs/run.ts</code></td>
+</tr>
+<tr>
+<td>What's stored / read</td>
+<td><code>src/lib/db/repository.ts</code> + <code>prisma/schema.prisma</code></td>
+</tr>
+<tr>
+<td>Pricing / tiers / seats</td>
+<td><code>src/lib/billing/pricing.ts</code></td>
+</tr>
+<tr>
+<td>Payment fulfillment</td>
+<td><code>src/app/api/stripe/webhook/route.ts</code></td>
+</tr>
+<tr>
+<td>Account sign-in</td>
+<td><code>src/app/api/magic-link/route.ts</code> + <code>src/lib/account/session.ts</code></td>
+</tr>
+<tr>
+<td>Public API endpoints</td>
+<td><code>src/app/api/v1/**</code> + <code>src/lib/api/**</code></td>
+</tr>
+<tr>
+<td>Webhook delivery</td>
+<td><code>src/lib/jobs/deliver-webhooks.ts</code> + <code>src/lib/api/webhooks/**</code></td>
+</tr>
+<tr>
+<td>A GA4 event</td>
+<td><code>src/lib/analytics.ts</code> (+ <code>analytics-mp.ts</code> for server purchase)</td>
+</tr>
+<tr>
+<td>An SEO page / tool</td>
+<td><code>src/app/&lt;slug&gt;/page.tsx</code> + <code>src/components/tools/*</code> + <code>src/app/sitemap.ts</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="c-satellite-data-analysis-pipeline">C. Satellite data &amp; analysis pipeline</h2>
+<p>This is the heart of the product and the most stable code. Two root docs are authoritative and should
+be read in full: <strong><a href="../SATELLITE_DATA.md"><code>SATELLITE_DATA.md</code></a></strong> (data source, CDSE Statistical API,
+evalscript, provider abstraction) and <strong><a href="../ALGORITHM.md"><code>ALGORITHM.md</code></a></strong> (the full stasis heuristic,
+thresholds, and overrides). This section summarizes and points into the code.</p>
+<p><strong>Source.</strong> Copernicus <strong>Sentinel-2 L2A</strong> surface reflectance, via the <strong>Sentinel Hub Statistical
+API</strong> on the Copernicus Data Space Ecosystem (CDSE). The API computes cloud-masked, polygon-level
+statistics (NDVI, NDBI, BSI) <strong>server-side</strong> — Ground Stasis never downloads rasters. <span class="chip chip-verified">Verified</span>
+<code>src/lib/satellite/sentinelhub-provider.ts</code>.</p>
+<p><strong>Provider abstraction.</strong> <code>src/lib/satellite/provider.ts</code> defines <code>SatelliteProvider</code>. Two
+implementations: <code>DemoProvider</code> (synthetic <code>DEMO_SITE</code>, the default when unconfigured) and
+<code>SentinelHubProvider</code> (CDSE). <code>getSatelliteProvider()</code> chooses by <code>SATELLITE_PROVIDER</code> and <strong>falls
+back to demo if the live provider is selected but unconfigured</strong> — the app never crashes for a missing
+key. <span class="chip chip-verified">Verified</span></p>
+<p><strong>Pipeline (one site):</strong></p>
+<pre><code>getAvailableObservations (provider) → usability filter → site-level change → baseline
+   → stasis score (0–100) → confidence (HIGH/MED/LOW, independent) → status → alert decision
+</code></pre>
+<p>Implemented in <code>src/lib/analysis/*</code> (pure) and orchestrated by <code>src/lib/jobs/analyze-site.ts</code>.</p>
+<p><strong>Integrity rules enforced in code (do not weaken):</strong>
+- A provider failure or insufficient/stale data → <strong>DATA GAP</strong>, never STASIS. <span class="chip chip-verified">Verified</span> <code>analyze-site.ts</code>.
+- A <code>STASIS</code> score on <strong>LOW confidence</strong> is capped to <code>REVIEW</code>. <span class="chip chip-verified">Verified</span> <code>status.ts</code>.
+- There is no automated <code>ABANDONED</code>/<code>FRAUD</code> status. The engine makes no legal/underwriting conclusion.</p>
+<p><strong>Versioning.</strong> Every evaluation records <code>analysisVersion</code> (<code>stasis-v0.1</code>) and <code>thresholdsVersion</code>
+(<code>thresholds-v0.1</code>). Historical scores are never silently rewritten; recalculation under a new version
+is explicit. <span class="chip chip-verified">Verified</span> <code>src/lib/analysis/config.ts</code>.</p>
+<p><strong><span class="chip chip-runtime">Runtime-verify</span></strong> The CDSE <strong>response field names</strong> (<code>outputs</code>/<code>bands</code>/<code>stats</code>/<code>percentiles</code>)
+should be validated against a real API response the first time live credentials run; the parser is
+written defensively for this reason (noted in <code>SATELLITE_DATA.md</code>).</p>
+<p><strong>Limitations (state them to any customer).</strong> Satellite-derived surface change is <em>indirect</em> evidence
+of activity, not proof of completed work, contractor performance, loan compliance, or draw
+eligibility. Revisit cadence + clouds mean a usable image isn't guaranteed on any pass.</p>
+<hr />
+<h2 id="d-application-architecture-request-lifecycle">D. Application architecture &amp; request lifecycle</h2>
+<p><strong>Rendering.</strong> Next.js App Router. Public pages are server components, mostly <strong>static</strong> (prerendered
+at build). The account area and all <code>/api/**</code> handlers are <strong>dynamic</strong> (<code>force-dynamic</code>, server-rendered
+on demand). Heavy work never happens in a page render — it runs in the scheduled jobs.</p>
+<p><strong>The layered rule (still holds).</strong> <code>src/lib/analysis</code> imports nothing outside itself — pure,
+deterministic, fully unit-tested. Everything else (providers, db, jobs, api) depends inward on it, not
+the reverse. This is what lets the engine be tested in isolation and reused.</p>
+<p><strong>Key request flows (traced through real files):</strong></p>
+<ul>
+<li><strong>$9 check:</strong> <code>/construction-activity-check</code> → <code>components/check/CheckFlow.tsx</code> → <code>POST /api/checkout</code>
+  (Stripe Checkout, mode <code>payment</code>) → Stripe → <code>POST /api/stripe/webhook</code> (on
+  <code>checkout.session.completed</code>) marks the <code>SiteCheck</code> paid → the single analysis runs via <code>analyzeSite</code>
+  → result stored on the <code>SiteCheck</code> → emailed as a tokenized link → viewed at <code>/check/[token]</code>.</li>
+<li><strong>Subscription:</strong> <code>/#pricing</code> (<code>components/pricing-section.tsx</code>) → <code>POST /api/checkout</code> (mode
+  <code>subscription</code>) → Stripe → webhook <code>recordStripeSubscription</code> grants seats → sites created via
+  <code>repository.createSite</code> (entitlement-checked) → monitored by the scheduled job.</li>
+<li><strong>Scheduled monitoring:</strong> <code>scheduled-analysis</code> (every 6h) → <code>POST /api/analyze</code> (admin-gated) →
+  <code>runScheduledAnalysis</code> iterates <code>getSitesDueForAnalysis</code> → <code>analyzeSite</code> → <code>persistAnalysis</code> →
+  alerts emailed + (new) webhook deliveries enqueued.</li>
+</ul>
+<p><strong>Error propagation.</strong> Providers throw → the job converts failures to DATA GAP (never stasis). API
+routes return a stable JSON error envelope (<code>src/lib/api/errors.ts</code>). Webhook delivery failures are
+retried from a durable outbox (§H). Metering/webhook emission are best-effort and never break the
+request that triggered them.</p>
+<hr />
+<h2 id="e-database-data-model">E. Database &amp; data model</h2>
+<p><strong>Technology.</strong> PostgreSQL (Neon) via Prisma 5.22. Schema: <code>prisma/schema.prisma</code>. Access is funneled
+through <code>src/lib/db/repository.ts</code> (<code>SiteRepository</code>) — <strong>do not</strong> reach for <code>prisma</code> directly in
+routes; add a repository method. The Prisma client is a singleton (<code>src/lib/db/client.ts</code>,
+<code>getPrisma()</code> / <code>isDatabaseConfigured()</code>). <span class="chip chip-verified">Verified</span> — this <strong>supersedes</strong> <code>ARCHITECTURE.md</code>'s
+"persistence: spec only" line.</p>
+<p><strong>Models (current):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Purpose</th>
+<th>Key relations / fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>User</code></td>
+<td>Account identity</td>
+<td><code>email</code> unique; → sites, subscriptions, apiKeys, usageRecords, webhookEndpoints</td>
+</tr>
+<tr>
+<td><code>Subscription</code></td>
+<td>Stripe subscription state</td>
+<td><code>stripeCustomerId</code>, <code>priceId</code>, <code>seats</code>, <code>drawIntelligenceSeats</code>, <code>state</code></td>
+</tr>
+<tr>
+<td><code>Site</code></td>
+<td>A monitored site</td>
+<td><code>userId</code>, <code>geometryGeojson</code>, <code>status</code>, <code>stasisScore</code>, <code>confidence</code>, <code>loanNumber</code>, <code>drawIntelligence</code></td>
+</tr>
+<tr>
+<td><code>SiteMember</code></td>
+<td>Shared access to a site</td>
+<td><code>siteId</code> + <code>userId</code></td>
+</tr>
+<tr>
+<td><code>SiteObservation</code></td>
+<td>One satellite observation</td>
+<td><code>siteId</code>, <code>provider</code>, <code>observationDate</code>, <code>cloudPercent</code>, <code>qualityStatus</code>; → <code>SiteMetric</code></td>
+</tr>
+<tr>
+<td><code>SiteMetric</code></td>
+<td>Indices for an observation</td>
+<td>NDVI/NDBI/BSI, <code>siteChangePercent</code>, <code>changeVelocity</code>, <code>confidence</code></td>
+</tr>
+<tr>
+<td><code>SiteAlert</code></td>
+<td>An emitted alert</td>
+<td><code>type</code>, <code>severity</code>, <code>idempotencyKey</code> (unique — dedupe backstop)</td>
+</tr>
+<tr>
+<td><code>AnalysisRun</code></td>
+<td>Audit of one evaluation</td>
+<td>versions, provider, observation ids</td>
+</tr>
+<tr>
+<td><code>EmailEvent</code></td>
+<td>Email send audit</td>
+<td><code>to</code>, <code>type</code>, <code>delivered</code></td>
+</tr>
+<tr>
+<td><code>ApiLog</code></td>
+<td>(internal logging model)</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>SiteCheck</code></td>
+<td>The one-time $9 check</td>
+<td><code>token</code> unique, <code>email</code>, <code>paid</code>, result fields; <strong>no <code>userId</code></strong></td>
+</tr>
+<tr>
+<td><code>SiteMilestone</code></td>
+<td>CDI reported milestone vs evidence</td>
+<td><code>siteId</code>, reported stage, finding fields</td>
+</tr>
+<tr>
+<td><code>ApiKey</code></td>
+<td>Public API credential</td>
+<td><code>hashedKey</code> unique (SHA-256), <code>prefix</code>, <code>scopes[]</code>, <code>revokedAt</code></td>
+</tr>
+<tr>
+<td><code>UsageRecord</code></td>
+<td>API usage/billing ledger</td>
+<td><code>operation</code>, <code>outcome</code>, <code>billableUnits</code>, <code>priceVersion</code></td>
+</tr>
+<tr>
+<td><code>WebhookEndpoint</code></td>
+<td>Customer webhook target</td>
+<td><code>url</code>, <code>secretCipher</code> (AES-GCM), <code>events[]</code>, <code>active</code></td>
+</tr>
+<tr>
+<td><code>WebhookDelivery</code></td>
+<td>Durable delivery outbox</td>
+<td><code>event</code>, <code>payload</code>, <code>status</code>, <code>attempts</code>, <code>nextAttemptAt</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migrations.</strong> <code>prisma/migrations/</code> — <code>20261026223124_api_keys_usage</code> and <code>20261027104747_webhooks</code>
+are applied to production. Apply with <code>prisma migrate deploy</code> against the target <code>DATABASE_URL</code>;
+generate the client with <code>prisma generate</code> (the Netlify build runs <code>prisma generate</code>, <strong>not</strong> migrate —
+schema changes are a deliberate manual step).</p>
+<blockquote class="bq bq-risk">
+<p><strong><span class="chip chip-risk">Risk</span> Dev and production currently share one Neon database</strong> (endpoint <code>ep-shiny-boat-…</code>). A
+separate Neon <strong>dev branch</strong> exists; local <code>.env</code> must point at it before any migration or
+write-path testing, or local experiments hit production data. See §N and §M.</p>
+</blockquote>
+<hr />
+<h2 id="f-authentication-authorization-account-ownership">F. Authentication, authorization &amp; account ownership</h2>
+<p>There are <strong>two</strong> credential systems; keep them straight.</p>
+<p><strong>1. Magic-link tokens (humans).</strong> <code>src/lib/auth/magic-link.ts</code> — HMAC-SHA256 signed, short-lived
+(<code>MAGIC_LINK_TTL_MINUTES</code>, default 30), rotatable (<code>MAGIC_LINK_SECRET</code> + <code>…_PREVIOUS</code>). Payload carries
+<code>sub</code> (subject) + <code>scope</code>. Scopes in use: <code>account</code> (the whole account), and per-site scopes
+(<code>site:read</code> / <code>site:workspace</code> / <code>site:create</code>).
+- <strong>Account sign-in:</strong> <code>POST /api/magic-link</code> finds an <strong>existing</strong> user by email (no account
+  enumeration — identical response either way), mints an <code>account</code>-scoped token, and emails
+  <code>${APP_URL}/account?token=…</code>. <code>src/lib/account/session.ts</code> <code>verifyAccountToken()</code> is the gate:
+  it returns a userId <strong>only</strong> for a valid <code>account</code>-scoped token. Per-site tokens are rejected
+  there (unit-tested in <code>session.test.ts</code>). <span class="chip chip-verified">Verified</span>
+- <strong>Per-site workspace links</strong> (alerts, CDI) are minted elsewhere and are unaffected by the account flow.</p>
+<p><strong>2. API keys (programmatic).</strong> <code>src/lib/api/keys.ts</code> — <code>gs_live_</code> + 40 base62 chars; <strong>only the
+SHA-256 hash is stored</strong> (<code>ApiKey.hashedKey</code>); the plaintext is shown once at creation. Scopes:
+<code>checks:write</code>, <code>sites:read</code>, <code>sites:write</code>, <code>usage:read</code>, <code>webhooks:manage</code>. <code>src/lib/api/auth.ts</code>
+<code>authenticate(request, requiredScope?)</code> resolves the key by hash, checks <code>revokedAt</code> and scope, and
+best-effort stamps <code>lastUsedAt</code>. <span class="chip chip-verified">Verified</span></p>
+<p><strong>Authorization.</strong> Tenant isolation is enforced in the repository/store layer, not the UI: every
+site/observation/check/key/webhook read is scoped by <code>userId</code> (the <code>SiteCheck</code> is scoped by <strong>email
+match</strong> to the key owner, since it has no <code>userId</code> — <span class="chip chip-verified">Verified</span>, documented limitation in §G).</p>
+<p><strong>Route classes.</strong> Public: SEO pages, <code>GET /api/v1</code> + <code>/openapi.json</code>. Account-token: <code>/account</code>,
+<code>/api/account/**</code>. API-key: <code>/api/v1/**</code> (except the public index). Admin-secret: <code>/admin</code>,
+<code>POST /api/analyze</code>, <code>POST /api/cron/deliver-webhooks</code> (<code>ADMIN_SECRET</code> via <code>x-admin-secret</code>).</p>
+<hr />
+<h2 id="g-api-architecture-integrations">G. API architecture &amp; integrations</h2>
+<p><strong>Public REST API v1</strong> — base <code>https://groundstasis.com/api/v1</code>, API-key auth (<code>Authorization:
+Bearer gs_live_…</code> or <code>x-api-key</code>), stable JSON error envelope, rate-limited <strong>60 req/min</strong> per key
+(ledger-counted in <code>src/lib/api/meter.ts</code>), every call written to <code>UsageRecord</code>. Shared scaffolding:
+<code>src/lib/api/handler.ts</code> <code>handleRead()</code> (auth → rate-limit → load → meter, with <code>X-RateLimit-*</code>
+headers). Response bodies are snake_case via <code>src/lib/api/serialize.ts</code> (pure, unit-tested).</p>
+<table>
+<thead>
+<tr>
+<th>Method &amp; route</th>
+<th>Scope</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/v1</code></td>
+<td>none</td>
+<td>Public discovery index</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/openapi.json</code></td>
+<td>none</td>
+<td>OpenAPI 3.1 spec (<code>src/lib/api/openapi.ts</code>)</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/me</code></td>
+<td>any valid key</td>
+<td>Account id + scopes (connection label for Zapier)</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/sites</code></td>
+<td><code>sites:read</code></td>
+<td>List sites; <code>?loan_number=</code> filter (CRM lookup)</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/sites/{id}</code></td>
+<td><code>sites:read</code></td>
+<td>One site (tenant-checked)</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/sites/{id}/observations</code></td>
+<td><code>sites:read</code></td>
+<td>Cursor-paginated observation history</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/checks/{id}</code></td>
+<td><code>sites:read</code></td>
+<td>One $9 check result (owned by <strong>email match</strong>)</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/usage</code></td>
+<td><code>usage:read</code></td>
+<td>Month-to-date usage + rate-limit headroom</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/webhooks</code></td>
+<td><code>webhooks:manage</code></td>
+<td>Subscribe an endpoint (Zapier REST Hook subscribe)</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/webhooks</code></td>
+<td><code>webhooks:manage</code></td>
+<td>List endpoints</td>
+</tr>
+<tr>
+<td><code>DELETE /api/v1/webhooks/{id}</code></td>
+<td><code>webhooks:manage</code></td>
+<td>Unsubscribe (soft-disable)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Internal/account endpoints:</strong> <code>/api/account/keys</code> (mint/list) + <code>/revoke</code>, <code>/api/account/webhooks</code>
+(create/list) + <code>/disable</code> + <code>/test</code>, <code>/api/magic-link</code>, <code>/api/billing-portal</code>, <code>/api/checkout</code>,
+<code>/api/stripe/webhook</code>, <code>/api/analyze</code>, <code>/api/cron/deliver-webhooks</code>, per-site <code>/api/site/[token]</code>,
+<code>/api/check/[token]</code>, <code>/api/sites</code>.</p>
+<p><strong>Integrations:</strong> <strong>Zapier</strong> — a separate CLI app in <code>zapier-app/</code> (deploys to Zapier, not Netlify)
+with API-key auth and five REST Hook triggers (new observation, stasis detected, activity resumed,
+data gap, status changed) wired through <code>POST</code>/<code>DELETE /api/v1/webhooks</code>. Actions (add site, run check)
+are <strong><span class="chip chip-planned">Planned</span></strong> — they need <code>sites:write</code> endpoints + a metered-billing decision. <strong>Native
+Salesforce/Teams</strong> are <strong><span class="chip chip-planned">Planned</span></strong> (see <code>salesforce-integration.md</code>); API readiness (<code>?loan_number=</code>
+lookup) is done.</p>
+<hr />
+<h2 id="h-webhooks-asynchronous-processing">H. Webhooks &amp; asynchronous processing</h2>
+<p><strong>Two provider webhooks/async systems. Keep them separate.</strong></p>
+<p><strong>1. Inbound — Stripe webhook</strong> (<code>POST /api/stripe/webhook</code>). Verifies the Stripe signature
+(<code>STRIPE_WEBHOOK_SECRET</code>), and provisions <strong>only</strong> on <code>checkout.session.completed</code> — never before
+confirmed payment. It also fires the server-side GA4 <code>purchase</code> (Decision D, §L). Idempotency uses
+in-schema signals: <code>SiteCheck.paid</code> (first-payment flag) and the subscription "created" flag from a
+prior <code>findUnique</code> — so a duplicate Stripe delivery doesn't double-provision or double-count the
+purchase. [Verified by inspection; <strong><span class="chip chip-runtime">Runtime-verify</span></strong> against a real Stripe test event.]</p>
+<p><strong>2. Outbound — Ground Stasis webhooks</strong> (customer-facing). New this cycle.
+- <strong>Model:</strong> <code>WebhookEndpoint</code> (url + AES-GCM-encrypted <code>secretCipher</code> + subscribed <code>events[]</code>) and a
+  durable <code>WebhookDelivery</code> <strong>outbox</strong>.
+- <strong>Emission:</strong> <code>src/lib/api/webhooks/emit.ts</code> — when a monitoring run inserts a <strong>new</strong> alert
+  (<code>persistAnalysis</code> captures the inserted alerts via its create-closure, so duplicates never
+  re-emit), it maps <code>alertType → event</code> (<code>events.ts</code>) and enqueues a delivery per subscribed active
+  endpoint. Guarded with try/catch in <code>src/lib/jobs/run.ts</code> so a webhook failure <strong>cannot</strong> break a
+  monitoring run.
+- <strong>Delivery worker:</strong> <code>src/lib/jobs/deliver-webhooks.ts</code> <code>runWebhookDeliveries()</code> — claims due rows,
+  <strong>SSRF layer 2</strong> (resolves the hostname and re-checks every resolved IP against the private/reserved
+  blocklist in <code>ssrf.ts</code> before connecting), decrypts the secret, signs (<code>sign.ts</code>, Stripe-style
+  <code>t=…,v1=…</code> HMAC header <code>X-GroundStasis-Signature</code>), POSTs with an 8s timeout, then records the
+  outcome. Retries use exponential backoff (<code>delivery-policy.ts</code>, 30s→6h, max 6 attempts).
+  <strong>Delivery is at-least-once</strong> — consumers dedupe on the <code>X-GroundStasis-Delivery</code> id.
+- <strong>Trigger:</strong> <code>netlify/functions/scheduled-webhook-delivery.ts</code> (every minute) → admin-gated
+  <code>POST /api/cron/deliver-webhooks</code>.
+- <strong>Security:</strong> <code>src/lib/api/webhooks/ssrf.ts</code> layer 1 (reject non-https, credentials-in-URL,
+  non-443 ports, localhost/internal names, private/reserved IP literals) + layer 2 (resolve-time IP
+  recheck). [Verified; unit tests for sign/ssrf/secret-crypto/delivery-policy/events all pass in the
+  isolated harness.]</p>
+<hr />
+<h2 id="i-stripe-products-billing-entitlements">I. Stripe, products, billing &amp; entitlements</h2>
+<p><strong>Source of truth:</strong> <code>src/lib/billing/pricing.ts</code>. <strong>Prices live in env vars</strong> (the var <em>names</em> are in
+code, the <code>price_…</code> <em>values</em> are server-side env), so one build works across test/live.</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>id</th>
+<th>Env var (price id)</th>
+<th>Mode</th>
+<th>Seats</th>
+<th>Price</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Single-site check</td>
+<td><code>check</code></td>
+<td><code>STRIPE_PRICE_SITE_CHECK</code></td>
+<td>payment</td>
+<td>0</td>
+<td>$9 one-time</td>
+</tr>
+<tr>
+<td>Foundation</td>
+<td><code>foundation</code></td>
+<td><code>STRIPE_PRICE_ID</code> (legacy name)</td>
+<td>subscription</td>
+<td>1</td>
+<td>$19/mo</td>
+</tr>
+<tr>
+<td>Portfolio</td>
+<td><code>portfolio</code></td>
+<td><code>STRIPE_PRICE_PORTFOLIO</code></td>
+<td>subscription</td>
+<td>3</td>
+<td>$49/mo</td>
+</tr>
+<tr>
+<td>Pro</td>
+<td><code>pro</code></td>
+<td><code>STRIPE_PRICE_PRO</code></td>
+<td>subscription</td>
+<td>10</td>
+<td>$99/mo</td>
+</tr>
+<tr>
+<td>CDI add-on</td>
+<td>—</td>
+<td><code>STRIPE_PRICE_DRAW_INTELLIGENCE</code></td>
+<td>per-site</td>
+<td>—</td>
+<td>$15/site/mo</td>
+</tr>
+</tbody>
+</table>
+<blockquote class="bq bq-verified">
+<p><strong><span class="chip chip-superseded">Superseded</span></strong> <code>ENVIRONMENT.md</code> lists only <code>STRIPE_PRICE_ID</code> ($19/site). The current ladder is the
+four tiers + CDI above. <span class="chip chip-verified">Verified</span> the code reads exactly these env var names: <code>STRIPE_PRICE_SITE_CHECK</code>,
+<code>STRIPE_PRICE_ID</code> (foundation — legacy name kept for back-compat), <code>STRIPE_PRICE_PORTFOLIO</code>,
+<code>STRIPE_PRICE_PRO</code>, <code>STRIPE_PRICE_DRAW_INTELLIGENCE</code>. <strong><span class="chip chip-runtime">Runtime-verify</span></strong> Confirm the Netlify
+dashboard has all five populated with the correct live <code>price_…</code> ids — a missing or wrong one means
+that tier can't be purchased, and <code>seatsForPriceId</code> fails safe to <strong>1</strong> seat for any price it does
+not recognize.</p>
+</blockquote>
+<p><strong>Fulfillment.</strong> Payment → <code>checkout.session.completed</code> webhook → provisioning. Subscriptions grant
+seats via <code>seatsForPriceId()</code> (fail-safe: an unknown price grants <strong>1</strong> seat, never more). Sites are
+created through <code>repository.createSite</code>, which enforces the seat entitlement via <code>getEntitlement()</code>.
+The CDI add-on sets per-site <code>drawIntelligence</code> (clamped to the plan's seats). Customer self-service
+(upgrade/cancel/card) is the <strong>Stripe Customer Portal</strong> via <code>POST /api/billing-portal</code> (reachable from
+the account dashboard "Manage billing" button).</p>
+<hr />
+<h2 id="j-email-notifications-scheduled-jobs">J. Email, notifications &amp; scheduled jobs</h2>
+<p><strong>Email.</strong> <code>src/lib/email/</code> — a provider interface with <code>ConsoleEmailProvider</code> (default; logs the full
+message to the server console — this is how you read magic links locally) and <code>ResendProvider</code>
+(<code>EMAIL_PROVIDER=resend</code> + <code>EMAIL_API_KEY</code> + verified <code>EMAIL_FROM</code>). Templates in <code>templates.ts</code>; sends
+are audited to <code>EmailEvent</code>. Postmark/SendGrid can be added behind the same interface. <span class="chip chip-verified">Verified</span></p>
+<p><strong>Scheduled jobs (Netlify scheduled functions):</strong>
+- <code>scheduled-analysis</code> — every 6h (<code>0 */6 * * *</code>) → <code>POST /api/analyze</code> with <code>ADMIN_SECRET</code> →
+  <code>runScheduledAnalysis</code>. Sentinel-2 yields few usable scenes/week, so 6h is intentional.
+- <code>scheduled-webhook-delivery</code> — every minute (<code>* * * * *</code>) → <code>POST /api/cron/deliver-webhooks</code> →
+  <code>runWebhookDeliveries</code>.</p>
+<p>Both are thin triggers that call admin-gated internal routes (so the heavy logic stays out of the
+function bundle and is testable). Verify a run via the Netlify <strong>Function logs</strong>.</p>
+<hr />
+<h2 id="k-seo-public-tools-distribution">K. SEO, public tools &amp; distribution</h2>
+<p>The public layer is the acquisition engine; the $9 check is the tripwire into paid.</p>
+<ul>
+<li><strong>Hub &amp; pillars:</strong> <code>/construction-loan-monitoring</code> (hub) + <code>/construction-lender-monitoring</code>,
+  <code>/construction-loan-risk-monitoring</code>, <code>/satellite-construction-monitoring</code>,
+  <code>/vet-monitor-builders-construction-lending-risk</code>.</li>
+<li><strong>Free tools</strong> (<code>src/components/tools/*</code>, each with FAQ + Breadcrumb schema + a shared "New here?"
+  <code>ToolFootnote</code>): escalation calculator, delay-cost calculator, monitoring-gap calculator, draw
+  inspection form, <strong>utility construction inspection form</strong> (Tier 2), draw/monitoring checklists,
+  and the free <strong>activity check</strong>. Index at <code>/tools</code>.</li>
+<li><strong>Programmatic geo pages:</strong> <code>/construction-loan-monitoring/[location]</code> renders 12 market pages
+  (New York, New England + 10 high-construction metros) from <code>src/lib/seo/locations.ts</code>
+  (<code>generateStaticParams</code>, <code>dynamicParams = false</code>). Each has unique local content + the product
+  pitch; linked from the hub and sitemap. <strong><span class="chip chip-watch">Watch</span></strong> these are near-template — if they don't index
+  or look thin, consolidate (doorway-page risk).</li>
+<li><strong>Developer SEO:</strong> <code>/docs</code> (API docs incl. webhook signature verification), <code>/integrations/zapier</code>.</li>
+<li><strong>Config:</strong> <code>src/app/sitemap.ts</code> (dynamic), <code>src/app/robots.ts</code>, canonical URLs per page, OG/brand
+  assets in <code>public/brand/</code>, <code>/media-kit</code>.</li>
+</ul>
+<p>SEO <em>configuration</em> is in the repo; <em>rankings/indexing</em> require external verification in Google Search
+Console. Project docs <code>seo-roadmap.md</code> and <code>directory-kit.md</code> track status.</p>
+<hr />
+<h2 id="l-google-analytics-4-event-dictionary">L. Google Analytics 4 event dictionary</h2>
+<p>GA4 is injected in the root layout (<code>NEXT_PUBLIC_GOOGLE_ANALYTICS_ID</code>, default <code>G-F1R30MC86L</code>). Client
+events via <code>track()</code> in <code>src/lib/analytics.ts</code>. <strong>Never</strong> pass loan amounts, emails, addresses,
+coordinates, magic-link tokens, or Stripe ids into event params (enforced by convention in the file).</p>
+<p><strong>Commerce / funnel events</strong> (<code>GA_EVENTS</code>): <code>landing_view</code>, <code>cta_click</code>, <code>checkout_started</code>,
+<code>checkout_completed</code>, <code>site_setup_started</code>, <code>site_created</code>, <code>polygon_created</code>, <code>monitoring_started</code>,
+<code>dashboard_view</code>, <code>evidence_view</code>, <code>alert_generated</code>, <code>alert_opened</code>, <code>site_check_started</code>,
+<code>site_check_completed</code>, <code>site_report_viewed</code>, <code>draw_intelligence_offer_viewed/clicked</code>,
+<code>monitoring_plan_selected</code>, <code>subscription_checkout_started/completed</code>, <code>draw_intelligence_enabled</code>,
+<code>subscription_canceled</code>.</p>
+<p><strong>SEO free-tool events</strong> (consistent params <code>tool_name</code>, <code>tool_type</code>, <code>content_tier</code>, <code>page_path</code>):
+<code>seo_tool_start</code>, <code>seo_tool_complete</code>, <code>seo_tool_validation_error</code>, <code>file_download</code>, <code>generate_lead</code>.
+Helpers: <code>trackToolStart/Complete/ValidationError/FileDownload</code>.</p>
+<p><strong>Verified server-side purchase (Decision D).</strong> <code>src/lib/analytics-mp.ts</code> sends a GA4 <strong>Measurement
+Protocol</strong> <code>purchase</code> from the Stripe webhook after confirmed payment (<code>GA4_API_SECRET</code>,
+<code>transaction_id</code> = Stripe session id, value/currency from the session). The visitor's GA4 <code>client_id</code>
+is captured at checkout (<code>getGaClientId()</code> — gtag, falling back to the <code>_ga</code> cookie) and carried
+through Stripe metadata. If no client_id, the purchase is <strong>skipped, never faked</strong>. Idempotent via the
+in-schema first-payment/created flags. [Verified by inspection; <strong><span class="chip chip-runtime">Runtime-verify</span></strong> in GA4 DebugView.]</p>
+<blockquote class="bq bq-runtime">
+<p><strong><span class="chip chip-runtime">Runtime-verify</span></strong> A tracking call in code does <strong>not</strong> prove the event arrives in GA4. Confirm in
+GA4 Realtime/DebugView, and confirm which events are marked <strong>key events/conversions</strong> (that's
+configured in the GA4 UI, not the repo).</p>
+</blockquote>
+<hr />
+<h2 id="m-deployment-configuration-environments">M. Deployment, configuration &amp; environments</h2>
+<p><strong>Deploy (correct path): Git-connected Netlify CI.</strong> Push to GitHub → Netlify builds on its Linux CI
+(<code>npm run build</code> → <code>prisma generate &amp;&amp; next build</code>, with <code>@netlify/plugin-nextjs</code> v5) → deploy. Env
+vars live in the Netlify dashboard; the build uses those (not any local <code>.env</code>).</p>
+<blockquote class="bq bq-important">
+<p><strong><span class="chip chip-important">Important</span> Do not deploy this app with <code>netlify deploy</code> from the Windows CLI.</strong> It was observed
+to build successfully but publish Next v5 routing incorrectly, 404-ing every route. Drag-and-drop
+is static-only and also won't work (no serverless functions). Use Git-connected CI, or roll back in
+the Netlify dashboard (Deploys → a known-good deploy → Publish deploy) to restore instantly.</p>
+</blockquote>
+<p><strong>Environment variables (current).</strong> See <code>ENVIRONMENT.md</code> for the base set; this handbook adds the
+vars introduced since:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Needed for</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GA4_API_SECRET</code></td>
+<td>server-side <code>purchase</code> (Decision D)</td>
+<td>GA4 Admin → Data Streams → Measurement Protocol API secrets. <strong>Server-only, never <code>NEXT_PUBLIC</code>.</strong></td>
+</tr>
+<tr>
+<td><code>WEBHOOK_ENC_KEY</code></td>
+<td>encrypting webhook signing secrets</td>
+<td>AES-256-GCM key. <strong>Never rotate once endpoints exist</strong> (existing secrets become undecryptable).</td>
+</tr>
+<tr>
+<td><code>STRIPE_PRICE_SITE_CHECK</code></td>
+<td>$9 check</td>
+<td>one-time price id</td>
+</tr>
+<tr>
+<td><code>STRIPE_PRICE_PORTFOLIO</code> / <code>STRIPE_PRICE_PRO</code></td>
+<td>$49 / $99 tiers</td>
+<td>subscription price ids</td>
+</tr>
+<tr>
+<td><code>STRIPE_PRICE_DRAW_INTELLIGENCE</code></td>
+<td>CDI add-on</td>
+<td>per-site price id</td>
+</tr>
+</tbody>
+</table>
+<p>Plus the base set: <code>APP_URL</code>, <code>DATABASE_URL</code>, <code>SATELLITE_PROVIDER</code> + <code>SENTINELHUB_*</code>,
+<code>STRIPE_SECRET_KEY</code>/<code>STRIPE_PRICE_ID</code>/<code>STRIPE_WEBHOOK_SECRET</code>, <code>EMAIL_*</code>, <code>MAGIC_LINK_SECRET</code>(+<code>_PREVIOUS</code>/<code>_TTL_MINUTES</code>),
+<code>ADMIN_SECRET</code>, <code>NEXT_PUBLIC_GOOGLE_ANALYTICS_ID</code>.</p>
+<p><strong>Environments.</strong> Production builds on Netlify with prod env. Local dev uses a local <code>.env</code> — <strong>which
+must point at the Neon dev branch</strong>, not prod (dev/prod share a DB today). Local sign-in needs
+<code>APP_URL=http://localhost:3000</code> (or the emailed link points at the live site) and a local
+<code>MAGIC_LINK_SECRET</code>. The console email provider prints magic links to the <code>npm run dev</code> terminal.</p>
+<hr />
+<h2 id="n-security-privacy-data-integrity">N. Security, privacy &amp; data integrity</h2>
+<p><strong>Confirmed-good:</strong> API-key hashing (store only SHA-256); magic-link signing + expiry + rotation;
+account/site tenant isolation in the repository layer; Stripe webhook signature verification; webhook
+SSRF guard (two layers) + encrypted signing secrets at rest; GeoJSON validation; no secrets
+client-side; private site data served <code>noindex</code> and kept out of URLs; the DATA-GAP integrity rule.</p>
+<p><strong>Risks to track:</strong>
+- <strong><span class="chip chip-risk">Risk</span> Shared dev/prod database.</strong> Use the Neon dev branch for local work; never run migrations or
+  write-path tests against prod <code>.env</code>. (A local build that reads a dev <code>.env</code> must not be deployed —
+  use CI.)
+- <strong><span class="chip chip-risk">Risk</span> No app-level rate limiting on <code>/api/magic-link</code>.</strong> The public API is rate-limited (ledger),
+  but the sign-in endpoint relies on the no-enumeration response; add edge/middleware rate limiting in
+  production.
+- <strong><span class="chip chip-runtime">Runtime-verify</span> Stripe idempotency &amp; GA4 purchase</strong> under real duplicate deliveries.
+- <strong><span class="chip chip-note">Note</span> Webhook delivery is at-least-once</strong> by design — consumers must dedupe on delivery id.
+- <strong><span class="chip chip-watch">Watch</span> Geo/doorway pages</strong> — keep them substantive.</p>
+<p>Rank before acting: shared DB (highest), then magic-link rate limiting, then the runtime verifications.</p>
+<hr />
+<h2 id="o-troubleshooting-runbooks">O. Troubleshooting runbooks</h2>
+<p>Each: symptom → likely cause → where to look → safe fix → verify.</p>
+<ol>
+<li><strong>Whole site 404s after a deploy.</strong> → Deployed via the Windows Netlify CLI (v5 routing not
+   published). → Netlify Deploys list. → <strong>Roll back</strong> to a known-good deploy (Publish deploy), then
+   deploy via Git-connected CI. → <code>/</code> and <code>/api/v1</code> return content.</li>
+<li><strong>Satellite provider auth/API failure.</strong> → CDSE creds/quota. → <code>sentinelhub-provider.ts</code> logs;
+   <code>capabilities()</code> in <code>env.ts</code>. → Falls back to demo if unconfigured; fix creds. A failure must show
+   as DATA GAP, never stasis. → Run <code>scripts/validate-cdse.mjs</code>.</li>
+<li><strong>No usable observations / unexpected DATA GAP.</strong> → Clouds or <code>maxDaysSinceUsableObservation</code>
+   exceeded. → <code>analysis/config.ts</code> thresholds + the observation's <code>qualityStatus</code>. → Expected
+   behavior, not a bug; wait for a clear pass.</li>
+<li><strong>Magic-link sign-in shows nothing locally.</strong> → <code>APP_URL</code> not localhost, or the email isn't a <code>User</code>
+   row, or <code>MAGIC_LINK_SECRET</code> unset. → §F, §M. → Set <code>APP_URL=http://localhost:3000</code>, add a user via
+   <code>npx prisma studio</code>, set a local secret; link prints in the dev terminal.</li>
+<li><strong>Stripe payment didn't provision.</strong> → Webhook not received/verified. → <code>/api/stripe/webhook</code>;
+   Stripe dashboard → webhook deliveries. → Confirm <code>STRIPE_WEBHOOK_SECRET</code>; provisioning only fires on
+   <code>checkout.session.completed</code>. → Check the <code>Subscription</code>/<code>SiteCheck</code> row.</li>
+<li><strong>Webhook not delivered.</strong> → <code>WEBHOOK_ENC_KEY</code> unset, endpoint inactive/invalid URL, or SSRF-blocked.
+   → <code>WebhookDelivery.status</code>/<code>attempts</code>; Netlify function logs for <code>scheduled-webhook-delivery</code>. →
+   Fix endpoint; retries resume automatically.</li>
+<li><strong>Monitoring job didn't run.</strong> → Scheduled function error / <code>APP_URL</code>/<code>ADMIN_SECRET</code>. → Netlify
+   function logs. → Re-trigger <code>POST /api/analyze</code> manually with the admin secret.</li>
+<li><strong>Missing/duplicate GA4 events.</strong> → Consent, ad-blockers, or the event not marked a key event. →
+   GA4 DebugView. → Verify in the GA4 UI (runtime only).</li>
+</ol>
+<p>Never run destructive DB commands or apply migrations against production without a backup, an
+environment check, and an explicit decision.</p>
+<hr />
+<h2 id="p-junior-developer-onboarding">P. Junior developer onboarding</h2>
+<ol>
+<li>Read <code>README.md</code>, <code>ARCHITECTURE.md</code>, <code>ALGORITHM.md</code>, <code>SATELLITE_DATA.md</code>, then this handbook §A–§E.</li>
+<li><code>npm install</code>.</li>
+<li>Create a local <code>.env</code> from <code>.env.example</code>: point <code>DATABASE_URL</code> at the <strong>Neon dev branch</strong>, set
+   <code>APP_URL=http://localhost:3000</code>, a local <code>MAGIC_LINK_SECRET</code>, <code>WEBHOOK_ENC_KEY</code>. Leave
+   <code>SATELLITE_PROVIDER</code> unset (demo) to start.</li>
+<li><code>npx prisma generate</code>, then <code>npm run dev</code>. The app runs in demo mode with an empty-ish env.</li>
+<li>Trace a check: open <code>/construction-activity-check</code>, follow <code>CheckFlow</code> → <code>/api/checkout</code>.</li>
+<li>Trace fulfillment: read <code>/api/stripe/webhook</code> with Stripe test mode + a test price.</li>
+<li>Trace auth: <code>POST /api/magic-link</code> with a user's email → grab the link from the terminal →
+   <code>/account</code>.</li>
+<li>Trace monitoring: read <code>runScheduledAnalysis</code> in <code>src/lib/jobs/run.ts</code>.</li>
+<li>Make a small change (e.g., a tool's copy), run <code>npm run lint</code> + <code>npm test</code> + <code>npm run build</code>.</li>
+<li>Commit, push — Netlify CI deploys. Verify on the deploy's URL.</li>
+</ol>
+<p>Tests: <code>npm test</code> (vitest). The analysis engine, api libs, and webhook libs have unit tests.</p>
+<hr />
+<h2 id="q-faq">Q. FAQ</h2>
+<ul>
+<li><strong>Where does satellite data come from?</strong> CDSE Sentinel-2 L2A via the Statistical API (§C).</li>
+<li><strong>What does a status mean?</strong> A 0–100 stasis score bucketed ACTIVE/WATCH/REVIEW/STASIS, with
+  protective overrides; low confidence caps STASIS to REVIEW (§C, <code>ALGORITHM.md</code>).</li>
+<li><strong>Why might there be no recent observations?</strong> Clouds/revisit — reported as DATA GAP, never
+  inactivity.</li>
+<li><strong>Where's the analysis logic?</strong> <code>src/lib/analysis/</code> (pure).</li>
+<li><strong>Where are users/sites stored?</strong> Postgres via Prisma; access through <code>src/lib/db/repository.ts</code>.</li>
+<li><strong>How does auth work?</strong> Magic-link tokens for humans, API keys for programs (§F).</li>
+<li><strong>How does a $9 check become a report?</strong> <code>/api/checkout</code> → Stripe → webhook marks paid → <code>analyzeSite</code>
+  → result on <code>SiteCheck</code> → emailed <code>/check/[token]</code>.</li>
+<li><strong>How does a subscription activate?</strong> Webhook <code>recordStripeSubscription</code> grants seats (fail-safe to 1).</li>
+<li><strong>What if Stripe sends a webhook twice?</strong> In-schema first-payment/created flags make provisioning +
+  the GA4 purchase idempotent (§H, §L) — <strong><span class="chip chip-runtime">Runtime-verify</span></strong>.</li>
+<li><strong>How are monitoring checks triggered?</strong> <code>scheduled-analysis</code> every 6h → <code>/api/analyze</code>.</li>
+<li><strong>How do I add a GA4 event?</strong> Add to <code>GA_EVENTS</code> and call <code>track()</code> (§L).</li>
+<li><strong>How do I add an SEO page/tool?</strong> New <code>src/app/&lt;slug&gt;/page.tsx</code> (+ a <code>components/tools/*</code>), add to
+  <code>sitemap.ts</code>, cross-link.</li>
+<li><strong>How do I change pricing safely?</strong> Edit <code>src/lib/billing/pricing.ts</code> + set the matching Stripe price
+  id env vars; never hardcode <code>price_…</code>.</li>
+<li><strong>Which operations are unsafe in production?</strong> Migrations against prod <code>.env</code>, deploying a locally
+  built <code>.env</code>, the Windows Netlify CLI deploy, rotating <code>WEBHOOK_ENC_KEY</code>.</li>
+</ul>
+<h2 id="r-known-gaps-handoff-priorities">R. Known gaps &amp; handoff priorities</h2>
+<p><strong>Mandatory / high:</strong>
+1. Separate dev and prod databases properly (use the Neon dev branch consistently; stop sharing).
+2. Confirm the Netlify dashboard has all five Stripe price env vars populated with live <code>price_…</code>
+   ids (<code>STRIPE_PRICE_SITE_CHECK</code>, <code>STRIPE_PRICE_ID</code>, <code>STRIPE_PRICE_PORTFOLIO</code>, <code>STRIPE_PRICE_PRO</code>,
+   <code>STRIPE_PRICE_DRAW_INTELLIGENCE</code>) — the code reads these exact names.
+3. Runtime-verify Stripe fulfillment + the GA4 <code>purchase</code> against real test events.
+4. Add rate limiting to <code>/api/magic-link</code> (and ideally all public POSTs) at the edge.</p>
+<p><strong>Should do:</strong>
+5. Validate the CDSE Statistical API response parser against a live response.
+6. Confirm the geo/[location] pages index well; consolidate if thin.
+7. Update <code>ARCHITECTURE.md</code>/<code>ENVIRONMENT.md</code> or redirect them to this handbook (they're stale on
+   persistence + pricing).</p>
+<p><strong>Planned (not built):</strong> Zapier actions (add site / run check); native Salesforce (AppExchange) +
+Teams; API metered billing (the <code>UsageRecord</code> ledger already instruments it — flip on a Stripe metered
+price when a paying developer appears).</p>
+<hr />
+<p><em>End of handbook. A matching standalone, brand-styled HTML version lives at
+<code>docs/GROUNDSTASIS_TECHNICAL_HANDBOOK.html</code>. Keep the two synchronized when you edit.</em></p>
+    </div>
+  </main>
+</div>
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.sidebar .toc a'));
+  var map = {};
+  links.forEach(function(a){
+    var id = a.getAttribute('href'); if(id && id[0]==='#'){ var el=document.getElementById(id.slice(1)); if(el) map[id.slice(1)]=a; }
+  });
+  var ids = Object.keys(map);
+  if(!ids.length) return;
+  function onScroll(){
+    var y = window.scrollY + 120, current=null;
+    ids.forEach(function(id){ var el=document.getElementById(id); if(el && el.offsetTop<=y) current=id; });
+    links.forEach(function(a){a.classList.remove('active');});
+    if(current && map[current]) map[current].classList.add('active');
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+</body>
+</html>
