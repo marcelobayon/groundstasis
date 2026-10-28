@@ -1,0 +1,409 @@
+// Ground Stasis data model.
+//
+// This schema is the SPEC for the database. It is intentionally NOT wired into
+// the MVP core (the app runs in demo mode with no DB). To go live:
+//   1. npm install prisma @prisma/client
+//   2. set DATABASE_URL (Neon/Supabase Postgres both have free tiers)
+//   3. npx prisma migrate dev
+//
+// Geometry is stored as GeoJSON (Json) for MVP simplicity. Upgrade to PostGIS
+// (geometry column + GiST index) when spatial queries are needed — see
+// SATELLITE_DATA.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SiteStatus {
+  ACTIVE
+  WATCH
+  REVIEW
+  STASIS
+  DATA_GAP
+  PAUSED // subscription lapsed; history retained, monitoring suspended
+}
+
+enum Confidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum QualityStatus {
+  OK
+  LOW_QUALITY
+}
+
+enum AlertType {
+  STASIS_DETECTED
+  ACTIVITY_RESUMED
+  DATA_GAP
+  OBSERVATION_AVAILABLE
+}
+
+enum AlertSeverity {
+  INFO
+  NOTICE
+  WARNING
+}
+
+enum SubscriptionState {
+  active
+  trialing
+  past_due
+  canceled
+  unpaid
+  incomplete
+  unknown
+}
+
+// Customer-REPORTED construction stage for Construction Draw Intelligence.
+// These are reported by the borrower/contractor or taken from the project
+// schedule — NOT stages the satellite can certify.
+enum MilestoneStage {
+  SITE_PREP
+  EXCAVATION
+  FOUNDATION
+  STRUCTURAL_FRAMING
+  BUILDING_ENCLOSURE
+  EXTERIOR_COMPLETION
+  OTHER
+  UNKNOWN
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscriptions Subscription[]
+  sites         Site[]
+  siteMembers   SiteMember[]
+  apiKeys       ApiKey[]
+  usageRecords  UsageRecord[]
+  webhookEndpoints WebhookEndpoint[]
+}
+
+model Subscription {
+  id                   String            @id @default(cuid())
+  userId               String
+  user                 User              @relation(fields: [userId], references: [id])
+  stripeCustomerId     String?
+  stripeSubscriptionId String?           @unique
+  priceId              String?
+  state                SubscriptionState @default(unknown)
+  seats                Int               @default(1)
+  // Construction Draw Intelligence add-on: number of sites entitled to CDI
+  // (the quantity on the $15/mo add-on line item). 0 = plan has no CDI.
+  drawIntelligenceSeats Int              @default(0)
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  @@index([userId])
+}
+
+model Site {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  name             String
+  address          String?
+  latitude         Float?
+  longitude        Float?
+  geometryGeojson  Json
+  areaAcres        Float?
+  loanAmount       Decimal? @db.Decimal(14, 2)
+  loanNumber       String?
+  constructionStart DateTime?
+  constructionEnd  DateTime?
+  status           SiteStatus @default(DATA_GAP)
+  stasisScore      Int        @default(0)
+  confidence       Confidence @default(LOW)
+  // Construction Draw Intelligence enabled on this specific site (consumes one
+  // of the owner's drawIntelligenceSeats). Entitlement enforced server-side.
+  drawIntelligence Boolean    @default(false)
+  // audit of the most recent evaluation
+  analysisVersion  String?
+  thresholdsVersion String?
+  lastEvaluatedAt  DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  members      SiteMember[]
+  observations SiteObservation[]
+  alerts       SiteAlert[]
+  analysisRuns AnalysisRun[]
+  milestone    SiteMilestone?
+
+  @@index([userId])
+  @@index([status])
+}
+
+model SiteMember {
+  id        String   @id @default(cuid())
+  siteId    String
+  site      Site     @relation(fields: [siteId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  role      String   @default("viewer")
+  createdAt DateTime @default(now())
+
+  @@unique([siteId, userId])
+  @@index([siteId])
+}
+
+model SiteObservation {
+  id                  String        @id @default(cuid())
+  siteId              String
+  site                Site          @relation(fields: [siteId], references: [id])
+  provider            String
+  providerObservationId String
+  observationDate     DateTime
+  cloudPercent        Float?
+  usablePixelPercent  Float?
+  qualityStatus       QualityStatus @default(OK)
+  imageryUrl          String?
+  createdAt           DateTime      @default(now())
+
+  metrics SiteMetric?
+
+  @@unique([siteId, provider, providerObservationId])
+  @@index([siteId, observationDate])
+}
+
+model SiteMetric {
+  id               String   @id @default(cuid())
+  observationId    String   @unique
+  observation      SiteObservation @relation(fields: [observationId], references: [id])
+  meanNdvi         Float?
+  medianNdvi       Float?
+  meanNdbi         Float?
+  medianNdbi       Float?
+  meanBsi          Float?
+  medianBsi        Float?
+  siteChangePercent Float?
+  changeVelocity   Float?
+  baselineDeviation Float?
+  confidence       Confidence @default(LOW)
+  createdAt        DateTime   @default(now())
+}
+
+model SiteAlert {
+  id             String        @id @default(cuid())
+  siteId         String
+  site           Site          @relation(fields: [siteId], references: [id])
+  type           AlertType
+  severity       AlertSeverity @default(NOTICE)
+  score          Int
+  confidence     Confidence
+  // idempotency: the same triggering state never creates two alerts
+  idempotencyKey String        @unique
+  observationId  String?
+  message        String?
+  analysisVersion String?
+  thresholdsVersion String?
+  triggeredAt    DateTime      @default(now())
+  emailSentAt    DateTime?
+  acknowledgedAt DateTime?
+
+  @@index([siteId, triggeredAt])
+}
+
+model EmailEvent {
+  id         String   @id @default(cuid())
+  to         String
+  type       String
+  provider   String
+  providerId String?
+  subject    String?
+  delivered  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([to, createdAt])
+}
+
+model AnalysisRun {
+  id               String    @id @default(cuid())
+  siteId           String
+  site             Site      @relation(fields: [siteId], references: [id])
+  analysisVersion  String
+  thresholdsVersion String
+  provider         String
+  status           String    // "COMPLETE" | "DATA_GAP" | "FAILED"
+  observationIds   String[]
+  resultStatus     SiteStatus?
+  resultScore      Int?
+  resultConfidence Confidence?
+  error            String?
+  startedAt        DateTime  @default(now())
+  finishedAt       DateTime?
+
+  @@index([siteId, startedAt])
+}
+
+model ApiLog {
+  id         String   @id @default(cuid())
+  route      String
+  method     String
+  status     Int
+  durationMs Int?
+  siteId     String?
+  createdAt  DateTime @default(now())
+
+  @@index([route, createdAt])
+}
+
+/// A one-time ($9) single-site check — the tripwire. Deliberately decoupled
+/// from Site/Subscription: the buyer gets ONE live satellite read, not ongoing
+/// monitoring, so it never enters the scheduled-analysis loop. `token` keys the
+/// secure results page, `paid` gates the (paid) analysis, and `resultJson`
+/// stores the full SiteEvaluation snapshot for rendering and audit.
+model SiteCheck {
+  id              String      @id @default(cuid())
+  token           String      @unique
+  email           String
+  stripeSessionId String?     @unique
+  stripePaymentId String?
+  paid            Boolean     @default(false)
+
+  // site input (captured after payment)
+  siteName        String?
+  address         String?
+  latitude        Float?
+  longitude       Float?
+  areaAcres       Float?
+  geometryGeojson Json?
+
+  // result (populated once the single analysis runs)
+  status          SiteStatus?
+  stasisScore     Int?
+  confidence      Confidence?
+  provider        String?
+  resultJson      Json?
+  analyzedAt      DateTime?
+
+  // funnel instrumentation
+  upsellClickedAt DateTime?
+  resultEmailedAt DateTime?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([email, createdAt])
+}
+
+/// Construction Draw Intelligence: the customer-reported milestone context for
+/// one site, compared against satellite evidence. One active milestone per site
+/// (Phase 1); a future dashboard can add history without a rewrite. Reported
+/// fields are the customer's; the finding fields are the system's comparison.
+model SiteMilestone {
+  id                  String         @id @default(cuid())
+  siteId              String         @unique
+  site                Site           @relation(fields: [siteId], references: [id])
+  reportedStage       MilestoneStage @default(UNKNOWN)
+  expectedMilestone   String?
+  targetDate          DateTime?
+  actualStageReported String?
+  drawReference       String?
+  drawAmount          Decimal?       @db.Decimal(14, 2)
+  note                String?
+  // latest CDI finding (reported-vs-observed), for display + email idempotency
+  lastFindingCode     String?
+  lastFindingAt       DateTime?
+  lastFindingJson     Json?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@index([siteId])
+}
+
+/// Programmatic API access key (API v1). The plaintext secret is shown once at
+/// creation and never stored — only its SHA-256 hash. `prefix` is a short,
+/// safe-to-display fragment for key lists. Scopes gate what the key may do.
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  name       String
+  prefix     String
+  hashedKey  String    @unique
+  scopes     String[]  @default([])
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  usage      UsageRecord[]
+
+  @@index([userId])
+}
+
+/// Billing-grade usage ledger for API v1. One row per metered operation, with
+/// enough detail to audit and (later) bill: tenant, key, operation, outcome,
+/// billable units, and the pricing version applied.
+model UsageRecord {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  apiKeyId       String?
+  apiKey         ApiKey?  @relation(fields: [apiKeyId], references: [id])
+  operation      String
+  idempotencyKey String?
+  outcome        String
+  billableUnits  Int      @default(0)
+  priceVersion   String?
+  route          String?
+  status         Int?
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([apiKeyId, createdAt])
+  @@index([operation, createdAt])
+}
+
+
+/// A customer-registered webhook endpoint. We POST signed event deliveries here.
+/// The signing secret is shown once at creation and stored only as AES-256-GCM
+/// ciphertext (secretCipher) — recoverable at delivery time to sign, not exposed
+/// by a DB leak alone.
+model WebhookEndpoint {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  url          String
+  secretCipher String
+  events       String[]  @default([])
+  active       Boolean   @default(true)
+  description  String?
+  createdAt    DateTime  @default(now())
+  disabledAt   DateTime?
+
+  deliveries   WebhookDelivery[]
+
+  @@index([userId])
+}
+
+/// Durable delivery outbox: one row per event queued for an endpoint. A
+/// scheduled worker drains pending rows, signs + POSTs them, and retries with
+/// backoff via nextAttemptAt until delivered or failed.
+model WebhookDelivery {
+  id             String          @id @default(cuid())
+  endpointId     String
+  endpoint       WebhookEndpoint @relation(fields: [endpointId], references: [id])
+  event          String
+  payload        Json
+  status         String          @default("pending")
+  attempts       Int             @default(0)
+  lastAttemptAt  DateTime?
+  nextAttemptAt  DateTime        @default(now())
+  responseStatus Int?
+  createdAt      DateTime        @default(now())
+
+  @@index([status, nextAttemptAt])
+  @@index([endpointId, createdAt])
+}

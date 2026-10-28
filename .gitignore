@@ -1,0 +1,28 @@
+# dependencies
+/node_modules
+/zapier-app/node_modules
+
+# next.js build output
+/.next/
+/out/
+/build
+
+# netlify
+.netlify/
+
+# env & secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+
+# logs / os / editor
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+*.pem
+.vscode/
+.idea/
+
+# prisma (generated client lives in node_modules)
+# (schema + migrations ARE committed)

@@ -1,0 +1,33 @@
+# Ground Stasis — Netlify deployment config
+#
+# Frontend + API routes deploy to Netlify. The database (Postgres/Neon/Supabase)
+# and the live satellite provider are external services configured via env vars.
+#
+# NOTE ON ARCHITECTURE: Netlify hosts the Next.js app and light serverless
+# functions well. It is NOT a database, and it is not where you run heavy raster
+# processing. The MVP avoids raster processing entirely by using the Copernicus
+# Data Space / Sentinel Hub *Statistical API*, which returns polygon-level
+# statistics server-side. See SATELLITE_DATA.md and ARCHITECTURE.md.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # APP_URL (https://groundstasis.com) is a PUBLIC url, not a secret. Next.js inlines
+  # it into build output, where Netlify's post-build secret scanner finds it and fails
+  # the build. This omits that one key from scanning. Real secrets (STRIPE_SECRET_KEY,
+  # DATABASE_URL, RESEND_API_KEY, etc.) are STILL scanned. Add more public keys to the
+  # comma-separated list if the scanner flags another non-secret (e.g. a GA tag).
+  SECRETS_SCAN_OMIT_KEYS = "APP_URL,SATELLITE_PROVIDER,SENTINELHUB_BASE_URL,SENTINELHUB_TOKEN_URL"
+
+# The official Next.js runtime for Netlify (auto-installed by Netlify).
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# The scheduled analysis cadence is declared inside the function itself
+# (netlify/functions/scheduled-analysis.ts via `export const config`).
+# This block is here only to document intent and can override the schedule.
+[functions."scheduled-analysis"]
+  schedule = "0 */6 * * *"
