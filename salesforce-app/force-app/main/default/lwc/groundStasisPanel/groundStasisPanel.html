@@ -1,0 +1,51 @@
+<template>
+    <lightning-card title="Ground Stasis — Site Activity" icon-name="utility:world">
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+
+            <template lwc:if={notConfigured}>
+                <p class="slds-text-color_weak">
+                    Set the <strong>Loan Number Field API Name</strong> in this component's
+                    settings (Lightning App Builder) to the field on this record that holds
+                    the loan number.
+                </p>
+            </template>
+
+            <template lwc:if={loading}>
+                <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+            </template>
+
+            <template lwc:if={error}>
+                <p class="slds-text-color_error">{error}</p>
+            </template>
+
+            <template lwc:if={noMatch}>
+                <p class="slds-text-color_weak">
+                    No monitored Ground Stasis site matches this loan number.
+                </p>
+            </template>
+
+            <template lwc:if={hasSites}>
+                <template for:each={sites} for:item="site">
+                    <div key={site.key} class="slds-box slds-box_x-small slds-m-bottom_x-small">
+                        <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                            <span class="gs-dot slds-m-right_x-small" style={site.dotStyle}></span>
+                            <strong>{site.name}</strong>
+                            <span class="slds-m-left_x-small slds-text-color_weak">— {site.statusLabel}</span>
+                        </div>
+                        <p class="slds-text-body_small slds-text-color_weak">
+                            Stasis score {site.stasisScore}/100 · {site.confidence} confidence
+                            <template lwc:if={site.lastEvaluatedAt}>
+                                · last evaluated {site.lastEvaluatedAt}
+                            </template>
+                        </p>
+                    </div>
+                </template>
+                <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">
+                    An independent monitoring signal — not a verification of work completed,
+                    draw eligibility, or construction status.
+                </p>
+            </template>
+
+        </div>
+    </lightning-card>
+</template>

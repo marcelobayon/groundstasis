@@ -26,3 +26,9 @@ yarn-error.log*
 
 # prisma (generated client lives in node_modules)
 # (schema + migrations ARE committed)
+
+# build artifacts (do not commit)
+zapier-app/build/
+tsconfig.tsbuildinfo
+salesforce-app/.sf/
+salesforce-app/.sfdx/

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Ground Stasis User</label>
+    <description>Grants Apex access for the Ground Stasis site-activity component. Assign to users who should see the panel. External Credential principal access is granted separately (see README).</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <classAccesses>
+        <apexClass>GroundStasisService</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+</PermissionSet>

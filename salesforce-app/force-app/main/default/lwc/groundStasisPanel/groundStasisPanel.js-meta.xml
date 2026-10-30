@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>62.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Ground Stasis Site Activity</masterLabel>
+    <description>Shows the Ground Stasis monitored site(s) matching this record's loan number.</description>
+    <targets>
+        <target>lightning__RecordPage</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__RecordPage">
+            <property
+                name="loanNumberField"
+                type="String"
+                label="Loan Number Field API Name"
+                description="API name of the field on this record that holds the loan number, e.g. Loan_Number__c"/>
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>
