@@ -3,6 +3,7 @@ import "./globals.css";
 import { Analytics } from "@/components/Analytics";
 import { RouteAnalytics } from "@/components/route-analytics";
 import { Nav, Footer } from "@/components/chrome";
+import { FreeCheckSlideIn } from "@/components/FreeCheckSlideIn";
 import { SITE } from "@/lib/config/site";
 
 export const metadata: Metadata = {
@@ -82,6 +83,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Nav />
         <main>{children}</main>
         <Footer />
+        <FreeCheckSlideIn />
         <Analytics gaId={SITE.gaId} />
         <RouteAnalytics />
       </body>

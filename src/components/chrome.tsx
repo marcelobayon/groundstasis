@@ -62,6 +62,7 @@ export function Footer() {
           <div className="footer-links" style={colStyle}>
             <strong style={headStyle}>Free tools</strong>
             <Link href="/construction-loan-monitoring">Construction loan monitoring</Link>
+            <Link href="/construction-lender-stack">Construction lender stack</Link>
             <Link href="/construction-escalation-calculator">Escalation calculator</Link>
             <Link href="/construction-delay-cost-calculator">Delay cost calculator</Link>
             <Link href="/construction-monitoring-gap-calculator">Monitoring gap calculator</Link>

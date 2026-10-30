@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { SITE } from "@/lib/config/site";
 import { MARKET_LOCATIONS } from "@/lib/seo/locations";
+import { publishedCategories } from "@/config/affiliates";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const routes = [
@@ -29,6 +30,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/docs",
     "/integrations/zapier",
     ...MARKET_LOCATIONS.map((m) => `/construction-loan-monitoring/${m.slug}`),
+    "/construction-lender-stack",
+    ...publishedCategories().map((c) => `/construction-lender-stack/${c.slug}`),
   ];
   const now = new Date();
   return routes.map((path) => ({

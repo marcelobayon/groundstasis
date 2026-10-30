@@ -39,7 +39,7 @@ export default function Page() {
         </div>
         <p className="small muted" style={{ marginTop: 20 }}>
           Looking for the bigger picture? Start with{" "}
-          <Link href="/construction-loan-monitoring">construction loan monitoring</Link>.
+          <Link href="/construction-loan-monitoring">construction loan monitoring</Link>, or browse the whole <Link href="/construction-lender-stack">construction lender stack</Link>.
         </p>
       </div>
     </section>

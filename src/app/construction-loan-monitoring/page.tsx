@@ -81,7 +81,7 @@ export default function Page() {
             collateral that is not getting built. That stretch between touchpoints is the monitoring gap, and it is the
             single most common place construction-loan risk hides. You can put a number on your own exposure with the{" "}
             <Link href="/construction-monitoring-gap-calculator">monitoring gap calculator</Link>, and on the cost of a
-            stall with the <Link href="/construction-delay-cost-calculator">delay cost calculator</Link>.
+            stall with the <Link href="/construction-delay-cost-calculator">delay cost calculator</Link>. Monitoring is one layer of the broader <Link href="/construction-lender-stack">construction lender stack</Link>.
           </p>
 
           <h2>Where a remote signal fits</h2>

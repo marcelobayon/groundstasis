@@ -7,7 +7,7 @@ import {
 } from "./portfolio";
 import type { SiteStatus } from "@/lib/analysis/types";
 
-function site(status: SiteStatus, stasisScore = 0, name = status): PortfolioSite {
+function site(status: SiteStatus, stasisScore = 0, name: string = status): PortfolioSite {
   return {
     id: `${name}-${stasisScore}`,
     name,
