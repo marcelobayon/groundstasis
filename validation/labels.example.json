@@ -1,0 +1,19 @@
+[
+  {
+    "__example__": true,
+    "siteId": "REPLACE_WITH_REAL_Site.id",
+    "periodStart": "2026-01-01",
+    "periodEnd": "2026-06-01",
+    "groundTruth": "STALLED",
+    "source": "Independent source REQUIRED — e.g. 'Salt Lake County permit #B-2026-1183; no inspection activity Jan–Jun; confirmed stalled by GC 2026-06-05'",
+    "note": "Rows with \"__example__\": true are skipped by parseLabels. Delete this and add real, independently-sourced labels in validation/labels.json (gitignored)."
+  },
+  {
+    "__example__": true,
+    "siteId": "REPLACE_WITH_REAL_Site.id",
+    "periodStart": "2026-01-01",
+    "periodEnd": "2026-06-01",
+    "groundTruth": "ACTIVE",
+    "source": "e.g. 'Permit #B-2026-1190; framing + roofing inspections passed Mar–May; active'"
+  }
+]
