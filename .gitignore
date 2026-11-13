@@ -32,3 +32,6 @@ zapier-app/build/
 tsconfig.tsbuildinfo
 salesforce-app/.sf/
 salesforce-app/.sfdx/
+
+# Phase 2 validation — real ground-truth labels (independently sourced)
+validation/labels.json
