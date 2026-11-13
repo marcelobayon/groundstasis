@@ -9,7 +9,13 @@
 
 import { randomBytes, createHash } from "node:crypto";
 
-export type ApiScope = "checks:write" | "sites:read" | "sites:write" | "usage:read" | "webhooks:manage";
+export type ApiScope =
+  | "checks:write"
+  | "sites:read"
+  | "sites:write"
+  | "usage:read"
+  | "webhooks:manage"
+  | "financials:read";
 
 export const API_SCOPES: readonly ApiScope[] = [
   "checks:write",
@@ -17,6 +23,10 @@ export const API_SCOPES: readonly ApiScope[] = [
   "sites:write",
   "usage:read",
   "webhooks:manage",
+  // Private loan metadata (loan amount / loan number) is NOT part of site
+  // intelligence. A key only sees it when it explicitly holds this scope, so a
+  // key handed to an agent to read activity never leaks the borrower's loan data.
+  "financials:read",
 ] as const;
 
 const KEY_PREFIX = "gs_live_";

@@ -1,6 +1,7 @@
 import { handleRead, methodNotAllowed, ApiError } from "@/lib/api/handler";
 import { getSiteRepository } from "@/lib/db/repository";
 import { serializeSiteDetail } from "@/lib/api/serialize";
+import { hasScope } from "@/lib/api/keys";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,7 +16,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       if (!repo) throw new ApiError("server_error", "Database not configured.");
       const site = await repo.getSiteForUser(ctx.userId, params.id);
       if (!site) throw new ApiError("not_found", "Site not found.");
-      return { data: serializeSiteDetail(site) };
+      return { data: serializeSiteDetail(site, hasScope(ctx.scopes, "financials:read")) };
     },
   );
 }
