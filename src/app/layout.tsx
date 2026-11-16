@@ -86,6 +86,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <FreeCheckSlideIn />
         <Analytics gaId={SITE.gaId} />
         <RouteAnalytics />
+        {/* Portfolio Intelligence — first-party event tracking (server-rendered
+            <script> so document.currentScript resolves; see pi.js config read). */}
+        <script
+          src="https://my-portfolio-intelligence.netlify.app/sdk/pi.js"
+          data-pi-project="groundstasis"
+          defer
+        />
       </body>
     </html>
   );
