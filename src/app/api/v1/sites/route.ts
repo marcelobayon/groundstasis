@@ -1,6 +1,7 @@
 import { handleRead, methodNotAllowed, ApiError } from "@/lib/api/handler";
 import { getSiteRepository } from "@/lib/db/repository";
 import { serializeSiteSummary } from "@/lib/api/serialize";
+import { hasScope } from "@/lib/api/keys";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,6 +12,11 @@ export async function GET(request: Request) {
     const repo = getSiteRepository();
     if (!repo) throw new ApiError("server_error", "Database not configured.");
     const loanNumber = new URL(req.url).searchParams.get("loan_number");
+    if (loanNumber && !hasScope(ctx.scopes, "financials:read")) {
+      // loan_number is private financial metadata — filtering by it (and echoing
+      // it through request logs) requires the financials:read scope.
+      throw new ApiError("forbidden", "Filtering by loan_number requires the financials:read scope.");
+    }
     const sites = loanNumber
       ? await repo.findSitesByLoanNumber(ctx.userId, loanNumber)
       : await repo.getSitesForUser(ctx.userId);

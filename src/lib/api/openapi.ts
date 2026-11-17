@@ -66,7 +66,8 @@ export const openApiSpec = {
       get: {
         tags: ["Sites"],
         summary: "Get a site",
-        description: "Full detail for one site you own. Requires the `sites:read` scope.",
+        description:
+          "Full detail for one site you own. Requires the `sites:read` scope. Private loan metadata (`loan_amount`, `loan_number`) is omitted unless the key also holds the `financials:read` scope.",
         operationId: "getSite",
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
         responses: {

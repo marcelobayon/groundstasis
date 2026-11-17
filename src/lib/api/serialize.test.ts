@@ -31,31 +31,44 @@ describe("serializers (snake_case wire contract)", () => {
     });
   });
 
+  const detailInput = {
+    id: "s1",
+    name: "Lot 7",
+    address: "100 Main",
+    status: "WATCH",
+    stasisScore: 50,
+    confidence: "MEDIUM",
+    lastEvaluatedAt: null,
+    latitude: 40.7,
+    longitude: -111.9,
+    areaAcres: 2.5,
+    loanAmount: 1250000,
+    loanNumber: "LN-1",
+    constructionStart: D("2026-01-01T00:00:00.000Z"),
+    constructionEnd: null,
+    drawIntelligence: true,
+    createdAt: D("2026-01-01T00:00:00.000Z"),
+    updatedAt: D("2026-02-01T00:00:00.000Z"),
+  };
+
   it("site detail includes detail fields and null-safes dates", () => {
-    const out = serializeSiteDetail({
-      id: "s1",
-      name: "Lot 7",
-      address: "100 Main",
-      status: "WATCH",
-      stasisScore: 50,
-      confidence: "MEDIUM",
-      lastEvaluatedAt: null,
-      latitude: 40.7,
-      longitude: -111.9,
-      areaAcres: 2.5,
-      loanAmount: 1250000,
-      loanNumber: "LN-1",
-      constructionStart: D("2026-01-01T00:00:00.000Z"),
-      constructionEnd: null,
-      drawIntelligence: true,
-      createdAt: D("2026-01-01T00:00:00.000Z"),
-      updatedAt: D("2026-02-01T00:00:00.000Z"),
-    });
-    expect(out.loan_amount).toBe(1250000);
+    const out = serializeSiteDetail(detailInput);
     expect(out.construction_end).toBeNull();
     expect(out.last_evaluated_at).toBeNull();
     expect(out.draw_intelligence).toBe(true);
     expect(out.created_at).toBe("2026-01-01T00:00:00.000Z");
+  });
+
+  it("omits loan metadata by default (no financials:read scope)", () => {
+    const out = serializeSiteDetail(detailInput);
+    expect("loan_amount" in out).toBe(false);
+    expect("loan_number" in out).toBe(false);
+  });
+
+  it("includes loan metadata only when financials are explicitly allowed", () => {
+    const out = serializeSiteDetail(detailInput, true);
+    expect(out.loan_amount).toBe(1250000);
+    expect(out.loan_number).toBe("LN-1");
   });
 
   it("observation nests snake_cased metrics, or null when absent", () => {

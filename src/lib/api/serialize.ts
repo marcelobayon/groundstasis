@@ -79,7 +79,13 @@ export function serializeSiteSummary(s: SiteSummaryInput) {
   };
 }
 
-export function serializeSiteDetail(s: SiteDetailInput) {
+/**
+ * @param includeFinancials  Emit private loan metadata (loan_amount, loan_number).
+ *   Defaults to FALSE — the fields are omitted entirely unless the caller holds
+ *   the `financials:read` scope. Omission (not null) keeps loan data out of the
+ *   intelligence payload and out of any downstream logs.
+ */
+export function serializeSiteDetail(s: SiteDetailInput, includeFinancials = false) {
   return {
     id: s.id,
     name: s.name,
@@ -87,8 +93,7 @@ export function serializeSiteDetail(s: SiteDetailInput) {
     latitude: s.latitude,
     longitude: s.longitude,
     area_acres: s.areaAcres,
-    loan_amount: s.loanAmount,
-    loan_number: s.loanNumber,
+    ...(includeFinancials ? { loan_amount: s.loanAmount, loan_number: s.loanNumber } : {}),
     construction_start: iso(s.constructionStart),
     construction_end: iso(s.constructionEnd),
     status: s.status,
