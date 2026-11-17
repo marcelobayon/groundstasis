@@ -15,6 +15,8 @@ import { getEmailProvider, getEmailFrom } from "@/lib/email";
 import { renderWeeklyDigest } from "@/lib/email/digest-template";
 import { summarizePortfolio } from "@/lib/reports/portfolio";
 import { listDigestRecipients, hasEmailEventSince } from "@/lib/reports/store";
+import { isSuppressed, getPostalAddress, buildUnsubscribeUrl } from "@/lib/email/compliance";
+import { getMagicLinkSecrets } from "@/lib/env";
 
 export const DIGEST_EMAIL_TYPE = "weekly_digest";
 
@@ -23,7 +25,10 @@ export interface DigestRunSummary {
   digestsSent: number;
   skippedAlreadySent: number;
   skippedNoSites: number;
+  skippedSuppressed: number;
   failed: number;
+  /** True when the whole run was aborted for missing CAN-SPAM config (postal address / signing secret). */
+  blockedNoComplianceConfig: boolean;
 }
 
 /** Monday 00:00 UTC of the week containing `now` — the dedupe window start. */
@@ -49,11 +54,28 @@ export async function runWeeklyDigests(now: Date = new Date()): Promise<DigestRu
     digestsSent: 0,
     skippedAlreadySent: 0,
     skippedNoSites: 0,
+    skippedSuppressed: 0,
     failed: 0,
+    blockedNoComplianceConfig: false,
   };
 
   const repo = getSiteRepository();
   if (!repo) return summary; // DB not configured — nothing to do.
+
+  // Fail closed: a marketing email with no unsubscribe link or no physical
+  // postal address violates CAN-SPAM. Rather than ship one, skip the whole run
+  // until both are configured. (Service alerts are unaffected — this is only
+  // the weekly marketing digest.)
+  const postalAddress = getPostalAddress();
+  const signingSecret = getMagicLinkSecrets()[0];
+  if (!postalAddress || !signingSecret) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[ground-stasis] weekly digest skipped: set COMPANY_POSTAL_ADDRESS and MAGIC_LINK_SECRET to send marketing email (CAN-SPAM).",
+    );
+    summary.blockedNoComplianceConfig = true;
+    return summary;
+  }
 
   const recipients = await listDigestRecipients();
   summary.recipientsConsidered = recipients.length;
@@ -72,6 +94,11 @@ export async function runWeeklyDigests(now: Date = new Date()): Promise<DigestRu
         continue;
       }
 
+      if (await isSuppressed(user.email)) {
+        summary.skippedSuppressed++;
+        continue;
+      }
+
       const sites = await repo.getSitesForUser(user.id);
       if (sites.length === 0) {
         summary.skippedNoSites++;
@@ -79,7 +106,8 @@ export async function runWeeklyDigests(now: Date = new Date()): Promise<DigestRu
       }
 
       const portfolio = summarizePortfolio(sites, now);
-      const rendered = renderWeeklyDigest({ portfolio, accountUrl, periodLabel });
+      const unsubscribeUrl = buildUnsubscribeUrl(appUrl, user.email, signingSecret);
+      const rendered = renderWeeklyDigest({ portfolio, accountUrl, periodLabel, unsubscribeUrl, postalAddress });
 
       const res = await provider.send({
         to: user.email,

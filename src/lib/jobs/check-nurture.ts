@@ -9,6 +9,8 @@ import { getEmailProvider, getEmailFrom } from "@/lib/email";
 import { renderCheckNurture1, renderCheckNurture2 } from "@/lib/nurture/templates";
 import { listPaidChecks, type NurtureCheck } from "@/lib/nurture/store";
 import { hasEmailEventSince } from "@/lib/reports/store";
+import { isSuppressed, getPostalAddress, buildUnsubscribeUrl } from "@/lib/email/compliance";
+import { getMagicLinkSecrets } from "@/lib/env";
 
 const T1 = "check_nurture_1";
 const T2 = "check_nurture_2";
@@ -20,14 +22,39 @@ export interface NurtureRunSummary {
   sent1: number;
   sent2: number;
   skipped: number;
+  skippedSuppressed: number;
   failed: number;
+  /** True when the run was aborted for missing CAN-SPAM config. */
+  blockedNoComplianceConfig: boolean;
 }
 
 export async function runCheckNurture(now: Date = new Date()): Promise<NurtureRunSummary> {
-  const summary: NurtureRunSummary = { considered: 0, sent1: 0, sent2: 0, skipped: 0, failed: 0 };
+  const summary: NurtureRunSummary = {
+    considered: 0,
+    sent1: 0,
+    sent2: 0,
+    skipped: 0,
+    skippedSuppressed: 0,
+    failed: 0,
+    blockedNoComplianceConfig: false,
+  };
 
   const repo = getSiteRepository();
   if (!repo) return summary;
+
+  // Fail closed: these are commercial emails. Without an unsubscribe link and a
+  // physical postal address they violate CAN-SPAM, so skip the whole run until
+  // both are configured.
+  const postalAddress = getPostalAddress();
+  const signingSecret = getMagicLinkSecrets()[0];
+  if (!postalAddress || !signingSecret) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[ground-stasis] check-nurture skipped: set COMPANY_POSTAL_ADDRESS and MAGIC_LINK_SECRET to send marketing email (CAN-SPAM).",
+    );
+    summary.blockedNoComplianceConfig = true;
+    return summary;
+  }
 
   const checks = await listPaidChecks(LOOKBACK_DAYS);
   // Dedupe to the most recent paid check per email (listPaidChecks is newest-first).
@@ -45,6 +72,11 @@ export async function runCheckNurture(now: Date = new Date()): Promise<NurtureRu
 
   for (const c of byEmail.values()) {
     try {
+      if (await isSuppressed(c.email)) {
+        summary.skippedSuppressed++;
+        continue;
+      }
+
       const ageDays = (now.getTime() - c.createdAt.getTime()) / 86_400_000;
       const sent1 = await hasEmailEventSince(c.email, T1, EPOCH);
       const sent2 = await hasEmailEventSince(c.email, T2, EPOCH);
@@ -54,6 +86,8 @@ export async function runCheckNurture(now: Date = new Date()): Promise<NurtureRu
         checkUrl: `${appUrl}/check/${c.token}`,
         monitoringUrl,
         gapCalcUrl,
+        unsubscribeUrl: buildUnsubscribeUrl(appUrl, c.email, signingSecret),
+        postalAddress,
       };
 
       let type: string | null = null;

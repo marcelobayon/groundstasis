@@ -8,6 +8,11 @@
 // Self-contained renderer (its own inline-styled shell), same visual language
 // as the alert/digest emails.
 
+import {
+  renderComplianceFooterHtml,
+  renderComplianceFooterText,
+} from "@/lib/email/compliance";
+
 export interface RenderedEmail {
   subject: string;
   text: string;
@@ -19,12 +24,22 @@ export interface CheckNurtureContext {
   checkUrl: string; // /check/<token> — re-open their result
   monitoringUrl: string; // where to start continuous monitoring
   gapCalcUrl: string; // the monitoring-gap calculator
+  // CAN-SPAM footer (marketing email). The job supplies both; when present a
+  // compliance footer with an unsubscribe link + postal address is rendered.
+  unsubscribeUrl?: string;
+  postalAddress?: string;
 }
 
 const DISCLAIMER =
   "Ground Stasis is an independent monitoring signal, not a replacement for physical inspection, appraisal, engineering review, or underwriting judgment. Satellite evidence alone cannot determine whether construction has stopped, or why.";
 
-function shell(title: string, innerHtml: string, ctaUrl: string, ctaLabel: string): string {
+function shell(
+  title: string,
+  innerHtml: string,
+  ctaUrl: string,
+  ctaLabel: string,
+  complianceFooterHtml = "",
+): string {
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;background:#f1f5f9;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0A192F;">
 <div style="max-width:560px;margin:0 auto;padding:24px;">
@@ -38,7 +53,17 @@ function shell(title: string, innerHtml: string, ctaUrl: string, ctaLabel: strin
     </div>
   </div>
   <p style="font-size:12px;line-height:1.6;color:#64748B;margin:16px 4px;">${DISCLAIMER}</p>
+  ${complianceFooterHtml}
 </div></body></html>`;
+}
+
+/** Marketing-footer parts for a context, or empty strings when not supplied. */
+function footerParts(ctx: CheckNurtureContext): { html: string; text: string } {
+  if (!ctx.unsubscribeUrl || !ctx.postalAddress) return { html: "", text: "" };
+  return {
+    html: renderComplianceFooterHtml(ctx.unsubscribeUrl, ctx.postalAddress),
+    text: renderComplianceFooterText(ctx.unsubscribeUrl, ctx.postalAddress),
+  };
 }
 
 function siteLabel(name: string | null): string {
@@ -75,7 +100,12 @@ export function renderCheckNurture1(ctx: CheckNurtureContext): RenderedEmail {
     "",
     DISCLAIMER,
   ].join("\n");
-  return { subject, text, html: shell("What the weeks after a check look like", inner, ctx.monitoringUrl, "Watch this site continuously") };
+  const footer = footerParts(ctx);
+  return {
+    subject,
+    text: text + footer.text,
+    html: shell("What the weeks after a check look like", inner, ctx.monitoringUrl, "Watch this site continuously", footer.html),
+  };
 }
 
 export function renderCheckNurture2(ctx: CheckNurtureContext): RenderedEmail {
@@ -100,7 +130,12 @@ export function renderCheckNurture2(ctx: CheckNurtureContext): RenderedEmail {
     "",
     DISCLAIMER,
   ].join("\n");
-  return { subject, text, html: shell("Have this site watched automatically", inner, ctx.monitoringUrl, "See monitoring plans") };
+  const footer = footerParts(ctx);
+  return {
+    subject,
+    text: text + footer.text,
+    html: shell("Have this site watched automatically", inner, ctx.monitoringUrl, "See monitoring plans", footer.html),
+  };
 }
 
 function escapeHtml(s: string): string {

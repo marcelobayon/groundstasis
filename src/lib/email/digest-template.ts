@@ -12,6 +12,10 @@
 
 import type { PortfolioSummary } from "@/lib/reports/portfolio";
 import { STATUS_META, STATUS_ORDER } from "@/lib/reports/portfolio";
+import {
+  renderComplianceFooterHtml,
+  renderComplianceFooterText,
+} from "@/lib/email/compliance";
 
 export interface WeeklyDigestContext {
   portfolio: PortfolioSummary;
@@ -19,6 +23,10 @@ export interface WeeklyDigestContext {
   accountUrl: string;
   /** Human label for the week, e.g. "week of Oct 28, 2026". */
   periodLabel: string;
+  // CAN-SPAM footer (this is a marketing email). The job supplies both; when
+  // present an unsubscribe link + postal address are rendered.
+  unsubscribeUrl?: string;
+  postalAddress?: string;
 }
 
 export interface RenderedEmail {
@@ -63,6 +71,10 @@ export function renderWeeklyDigest(ctx: WeeklyDigestContext): RenderedEmail {
     }
   }
   textLines.push("", `View your portfolio: ${accountUrl}`, "", DISCLAIMER);
+  const hasFooter = Boolean(ctx.unsubscribeUrl && ctx.postalAddress);
+  if (hasFooter) {
+    textLines.push(renderComplianceFooterText(ctx.unsubscribeUrl!, ctx.postalAddress!));
+  }
   const text = textLines.join("\n");
 
   // ---- html ----------------------------------------------------------------
@@ -116,6 +128,7 @@ export function renderWeeklyDigest(ctx: WeeklyDigestContext): RenderedEmail {
     </div>
   </div>
   <p style="font-size:12px;line-height:1.6;color:#64748B;margin:16px 4px;">${DISCLAIMER}</p>
+  ${hasFooter ? renderComplianceFooterHtml(ctx.unsubscribeUrl!, ctx.postalAddress!) : ""}
 </div></body></html>`;
 
   return { subject, text, html };
